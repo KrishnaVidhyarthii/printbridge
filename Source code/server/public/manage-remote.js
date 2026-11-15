@@ -78,6 +78,7 @@
       const mk = (label, cls, fn) => {
         const b = document.createElement("button");
         b.className = cls; b.textContent = label;
+        b.setAttribute("aria-label", label + ": " + p.name);
         b.onclick = async () => {
           b.disabled = true;
           try { await fn(); await refresh(); } catch (err) { setPageMessage(err.message, "error"); }
@@ -105,6 +106,9 @@
   }
 
   function pendingTable(s) {
+    // Not while someone is using a control in it: rebuilding would close it.
+    const active = document.activeElement;
+    if (active && active.closest && active.closest("#rmPending")) return;
     $("rmPendingBox").hidden = !s.pending.length;
     const body = $("rmPending").querySelector("tbody");
     // Keep a printer someone picked but hasn't sent yet across the 10-second refresh.
@@ -120,14 +124,22 @@
       for (const n of s.printers) { const o = document.createElement("option"); o.value = n; o.textContent = n; sel.appendChild(o); }
       sel.dataset.id = e.id;
       sel.setAttribute("aria-label", "Printer for " + e.fileName);
+      // A printer that is hidden or gone now is shown, not silently swapped for the first one.
+      if (!s.printers.includes(e.printer)) {
+        const o = document.createElement("option");
+        o.value = e.printer; o.textContent = e.printer + " (not available)"; o.disabled = true;
+        sel.insertBefore(o, sel.firstChild);
+      }
       sel.value = picked[e.id] || e.printer;
       pc.appendChild(sel);
       tr.appendChild(pc);
       const cc = document.createElement("td"); cc.textContent = e.copies; tr.appendChild(cc);
       const ac = document.createElement("td"); ac.style.whiteSpace = "nowrap";
       const ok = document.createElement("button"); ok.textContent = "Print"; ok.style.marginRight = "6px";
+      ok.setAttribute("aria-label", "Print " + e.fileName);
       ok.onclick = async () => { ok.disabled = true; try { await post("/api/remote/pending/" + e.id + "/approve", { printer: sel.value }); await refresh(); } catch (err) { ok.disabled = false; setPageMessage(err.message, "error"); } };
       const no = document.createElement("button"); no.className = "danger"; no.textContent = "Don't print";
+      no.setAttribute("aria-label", "Don't print " + e.fileName);
       no.onclick = async () => {
         if (!confirm("Don't print " + e.fileName + "? " + e.person + " will see it was refused.")) return;
         no.disabled = true;

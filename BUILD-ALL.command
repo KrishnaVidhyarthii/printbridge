@@ -8,7 +8,7 @@
 # A copy also stays in the "Installers" folder next to this file.
 #
 # The version number comes from Source code/desktop/lib/version.js (raise it
-# with:  cd "Source code/release"  then  node publish-update.js bump 4.1.4).
+# with:  cd "Source code/release"  then  node publish-update.js bump 4.2.13).
 # To send a build to every computer as an automatic update afterwards, run
 # ./PUBLISH-UPDATE.command.
 #

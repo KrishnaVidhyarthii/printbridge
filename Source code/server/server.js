@@ -30,7 +30,7 @@ const help = require("./lib/help");
 const held = require("./lib/held");
 
 const PORT = parseInt(process.env.PORT, 10) || 3000;
-const VERSION = "4.2.12";
+const VERSION = "4.2.13";
 const MAX_UPLOAD_MB = parseInt(process.env.MAX_UPLOAD_MB, 10) || 50;
 const UPLOAD_DIR = jobs.UPLOAD_DIR;
 
@@ -742,6 +742,12 @@ function fromThisComputer(req) {
   const a = String(req.socket.remoteAddress || "");
   // Behind a local reverse proxy every request looks local, so a forwarded one never counts.
   if (req.headers["x-forwarded-for"]) return false;
+  // A website open in a browser here can also reach localhost: only this
+  // computer's own pages count (no other site's Origin, no rebound host name).
+  const local = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i;
+  if (!local.test(String(req.headers.host || ""))) return false;
+  const origin = req.headers.origin;
+  if (origin && !(/^https?:\/\//.test(origin) && local.test(origin.replace(/^https?:\/\//, "")))) return false;
   return a === "127.0.0.1" || a === "::1" || a === "::ffff:127.0.0.1";
 }
 // Problems are shown on the page as they are (they are written for people).
@@ -816,8 +822,12 @@ remote.start({
 app.use((err, req, res, next) => {
   if (req.file && req.file.path) fs.unlink(req.file.path, () => {});
 
-  if (err && (err.code === "LIMIT_FILE_SIZE" || err.type === "entity.too.large")) {
+  if (err && err.code === "LIMIT_FILE_SIZE") {
     res.status(413).json({ error: "That file is bigger than " + MAX_UPLOAD_MB + " MB." });
+    return;
+  }
+  if (err && (err.type === "entity.too.large" || err.type === "entity.parse.failed" || String(err.code || "").startsWith("LIMIT_"))) {
+    res.status(400).json({ error: "The page sent something the server couldn't read. Reload the page and try again." });
     return;
   }
   console.error(err);

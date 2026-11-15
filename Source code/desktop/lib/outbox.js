@@ -432,7 +432,7 @@ function start() {
   try {
     fs.watch(P.OUTBOX_DIR, (event, name) => {
       if (!name || String(name).toLowerCase() === vprinter.PORT_FILE_NAME) safeTick();
-    });
+    }).on("error", () => { /* the regular check above still runs */ });
   } catch (err) {
     /* polling alone still works */
   }

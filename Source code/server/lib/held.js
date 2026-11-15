@@ -62,9 +62,4 @@ function sweep() {
   }
 }
 
-function isHeldFile(fullPath) {
-  for (const entry of held.values()) if (entry.storedPath === fullPath) return true;
-  return false;
-}
-
-module.exports = { create, get, take, discard, sweep, isHeldFile };
+module.exports = { create, get, take, discard, sweep };

@@ -4,7 +4,7 @@
 #
 # The order, every time:
 #   1. Raise the version number:   cd "Source code/release"  then
-#                                  node publish-update.js bump 4.1.4
+#                                  node publish-update.js bump 4.2.13
 #   2. Build:                      ./BUILD-ALL.command
 #   3. Try the new installers on one computer.
 #   4. Publish:                    ./PUBLISH-UPDATE.command
@@ -31,6 +31,11 @@ if [ ! -f "$KEY" ]; then
 fi
 
 VERSION="$(sed -n 's/.*VERSION: "\([^"]*\)".*/\1/p' "$ROOT/Source code/desktop/lib/version.js")"
+if [ -z "$VERSION" ]; then
+  echo "Couldn't read the version number from Source code/desktop/lib/version.js." >&2
+  exit 1
+fi
 echo "Publishing PrintBridge $VERSION."
-read -r -p "What's new in it (one line; press Enter to skip): " NOTES
+# With nothing to type into (not run from Terminal), go on without notes.
+read -r -p "What's new in it (one line; press Enter to skip): " NOTES || NOTES=""
 node publish-update.js all --notes "$NOTES"

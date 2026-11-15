@@ -160,6 +160,8 @@ function colorCell(printer) {
   const cell = document.createElement("td");
   const seg = document.createElement("div");
   seg.className = "seg color-seg";
+  seg.setAttribute("role", "group");
+  seg.setAttribute("aria-label", "Colour for " + printer.name);
   for (const [mode, label] of COLOR_CHOICES) {
     const button = document.createElement("button");
     button.type = "button";

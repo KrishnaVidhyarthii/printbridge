@@ -219,7 +219,7 @@ c.push(
     "It changes the number everywhere it is written. Don't change it by hand.",
     "Run the checks. Each one ends with \"N checks passed\":",
     code("cd " + REPO + "/\"Source code\"/tests"),
-    code("for t in t1-durable t3-store t10-updates t11-fixip t12-remote t13-upload-retry t14-preview-files t15-page-view t16-other-printer t17-update-now t18-bad-messages; do node $t.js > /dev/null && echo \"ok $t\" || echo \"FAILED $t\"; done"),
+    code("for t in t1-durable t3-store t10-updates t11-fixip t12-remote t13-upload-retry t14-preview-files t15-page-view t16-other-printer t17-update-now t18-bad-messages t19-dialogs; do node $t.js > /dev/null && echo \"ok $t\" || echo \"FAILED $t\"; done"),
     "Any FAILED: run that one on its own (`node t16-other-printer.js`) to see why, and fix it before going on. (t2, t4, t5, t6 and t9 need a network card and are slower; run them before bigger changes.)",
     "Build:",
     code("cd " + REPO),

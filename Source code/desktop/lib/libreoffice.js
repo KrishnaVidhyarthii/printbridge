@@ -158,9 +158,9 @@ async function installFromWebsite() {
 // macOS ships LibreOffice as a disk image containing the app itself, not
 // an installer - Finder's normal "drag LibreOffice.app to Applications".
 // Done here without Finder: mount the disk image, copy the app to
-// /Applications, unmount it again. os.arch() reflects whichever slice of
-// this universal program the Mac is actually running - arm64 on Apple
-// Silicon, x64 on Intel - and macOS runs the matching build of LibreOffice.
+// /Applications, unmount it again. os.arch() is arm64 on Apple Silicon and
+// x64 on Intel (each has its own build of this program), and LibreOffice's
+// matching build is downloaded.
 async function installFromWebsiteMac(version) {
   const arch = os.arch() === "arm64" ? "aarch64" : "x86_64";
   const fileArch = os.arch() === "arm64" ? "aarch64" : "x86-64";

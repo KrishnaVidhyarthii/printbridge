@@ -63,6 +63,43 @@
       .poster { border: none; margin: 0; padding: 20px; max-width: none; border-radius: 0; }
       .poster .qr { border-color: #000; }
     }
+    /* Smaller sizes: a sheet of identical cards or stickers, cut along the dashed lines. */
+    .labels { display: grid; justify-content: center; gap: 0; padding: 0; margin: 0 auto 30px; background: #fff; color: #1f2933; width: max-content; max-width: 100%; }
+    .labels[hidden] { display: none; }
+    .labels .label { box-sizing: border-box; border: 0.3mm dashed #98a2b3; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; overflow: hidden; }
+    .labels .label svg { display: block; margin: 1.5mm 0; } /* white space around the code helps cameras */
+    .labels .l-brand { font-weight: 800; letter-spacing: .12em; color: #fff; background: #1E6FBF; border-radius: 1mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .labels .l-title { font-weight: 700; margin: 0; }
+    .labels .l-addr { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-all; margin: 0; }
+    /* Desk card: 9 x 9 cm, 4 to a page */
+    .labels.card { grid-template-columns: repeat(2, 90mm); }
+    .labels.card .label { width: 90mm; height: 90mm; padding: 5mm; gap: 2.5mm; }
+    .labels.card .l-brand { font-size: 3.6mm; padding: 1mm 3mm; }
+    .labels.card .l-title { font-size: 5mm; }
+    .labels.card svg { width: 46mm; height: 46mm; }
+    .labels.card .l-addr { font-size: 3.6mm; }
+    /* Printer sticker: 5.5 x 6 cm, 12 to a page */
+    .labels.sticker { grid-template-columns: repeat(3, 55mm); }
+    .labels.sticker .label { width: 55mm; height: 60mm; padding: 3mm; gap: 1.5mm; }
+    .labels.sticker .l-brand { font-size: 2.6mm; padding: .6mm 2mm; }
+    .labels.sticker .l-title { font-size: 3.8mm; }
+    .labels.sticker svg { width: 34mm; height: 34mm; }
+    .labels.sticker .l-addr { font-size: 2.7mm; }
+    /* Mini: 3.5 x 4 cm, 30 to a page - for the side of a printer or a laptop */
+    .labels.mini { grid-template-columns: repeat(5, 36mm); }
+    .labels.mini .label { width: 36mm; height: 42mm; padding: 2mm; gap: 1mm; }
+    .labels.mini .l-brand { display: none; }
+    .labels.mini .l-title { font-size: 3mm; }
+    .labels.mini svg { width: 25mm; height: 25mm; }
+    .labels.mini .l-addr { font-size: 2.2mm; }
+    @media print {
+      @page { size: A4; margin: 10mm; }
+      .labels { margin: 0 auto; }
+    }
+    @media screen and (max-width: 480px) {
+      .labels { zoom: .5; }
+    }
+
     /* Small phones: let the sign and its code fit the screen (printing is unaffected). */
     @media screen and (max-width: 480px) {
       .poster { padding: 30px 14px 24px; }
@@ -85,6 +122,15 @@
       Print this and stick it next to the printer. Anyone can point a phone
       camera at the code and start printing &mdash; nothing to install, no account.
     </p>
+    <div class="field" style="max-width:560px">
+      <label for="sizePick">Size</label>
+      <select id="sizePick">
+        <option value="wall">Wall sign (one A4 page)</option>
+        <option value="card">Desk card (9 &times; 9 cm, 4 to a page)</option>
+        <option value="sticker">Printer sticker (5.5 &times; 6 cm, 12 to a page)</option>
+        <option value="mini">Mini sticker (3.5 &times; 4 cm, 30 to a page)</option>
+      </select>
+    </div>
     <div class="row" style="max-width:560px;flex-wrap:wrap">
       <button id="printPoster" type="button" style="flex:0 0 auto">Print this sign</button>
       <select id="addressPick" style="display:none;flex:1 1 260px;min-width:0" aria-label="Address shown on the sign"></select>
@@ -114,6 +160,8 @@
     <p class="foot">Works on any phone, tablet or laptop on the office Wi-Fi.</p>
     <p class="foot" style="margin-top:4px">PrintBridge &middot; <span class="maker"><svg class="cup" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" style="vertical-align:-2px;margin-right:4px" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h12v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9z"/><path d="M16 10.5h1.5a2.5 2.5 0 0 1 0 5H16"/><path d="M8 3.5c-.6.8.6 1.7 0 2.5M11.5 3.5c-.6.8.6 1.7 0 2.5"/><path d="M3 21h14"/></svg>by @devnithdev</span></p>
   </div>
+
+  <div class="labels" id="labels" hidden></div>
 
   <script src="/vendor/qrcode.js"></script>
   <script src="/poster.js"></script>

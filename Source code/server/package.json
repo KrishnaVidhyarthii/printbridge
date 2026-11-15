@@ -1,6 +1,6 @@
 {
   "name": "print-platform-server",
-  "version": "4.2.12",
+  "version": "4.2.13",
   "private": true,
   "description": "PrintBridge web server",
   "author": "Devnith AE",

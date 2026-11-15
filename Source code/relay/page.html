@@ -46,9 +46,10 @@
   }
   .theme:hover { border-color: var(--brand-text); }
   .theme svg { width: 18px; height: 18px; }
-  .theme .moon { display: none; }
-  :root[data-dark] .theme .sun { display: none; }
-  :root[data-dark] .theme .moon { display: block; }
+  /* The icon shows what pressing it switches to, as on the printing page. */
+  .theme .sun { display: none; }
+  :root[data-dark] .theme .moon { display: none; }
+  :root[data-dark] .theme .sun { display: block; }
 
   main { flex: 1; display: grid; place-items: center; padding: 72px 16px 24px; }
   .card {
@@ -66,7 +67,9 @@
     width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--line);
     background: var(--field); color: var(--ink); font: inherit;
   }
-  input:focus, select:focus { outline: 3px solid var(--halo); border-color: var(--brand-text); }
+  input:focus-visible, select:focus-visible, button:focus-visible, .drop:focus-within { outline: 2px solid var(--brand-text); outline-offset: 2px; }
+  input:focus, select:focus { border-color: var(--brand-text); }
+  #stTitle:focus { outline: none; }
   #code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .08em; text-transform: uppercase; font-size: 17px; }
   .row { display: flex; gap: 12px; }
   .row > * { flex: 1; }
@@ -156,9 +159,9 @@
 
     <!-- 3. what happened -->
     <div id="step-done" hidden>
-      <div class="status">
+      <div class="status" aria-live="polite">
         <div class="big" id="stIcon">⏳</div>
-        <h2 id="stTitle">Sending...</h2>
+        <h2 id="stTitle" tabindex="-1">Sending...</h2>
         <p id="stText"></p>
       </div>
       <button class="go" type="button" id="again">Send another file</button>

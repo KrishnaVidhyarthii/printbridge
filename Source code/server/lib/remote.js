@@ -214,9 +214,12 @@ async function report(relayId, status, message, collected) {
 
 // --- printing one remote job --------------------------------------------------------------------
 
+// Any computer in the office can join and report a printer with any name, so
+// a same-named printer on a newer computer never takes a printout meant for
+// the one that has been here longest.
 function findPrinter(name) {
-  const matching = deps.db.printers.filter((p) => p.name === name && !p.hidden);
-  return matching.find((p) => deps.agents.isOnline(p.agentId)) || matching[0] || null;
+  const added = (p) => (deps.db.agents.find((a) => a.id === p.agentId) || {}).createdAt || 0;
+  return deps.db.printers.filter((p) => p.name === name && !p.hidden).sort((a, b) => added(a) - added(b))[0] || null;
 }
 
 // Turns an unlocked file into a print job. Returns the job.
@@ -317,6 +320,7 @@ async function poll() {
     // A job already handled can still be listed for a minute (the online
     // store catches up slowly): it is only told "collected" again.
     for (const job of res.jobs || []) {
+      if (!job || typeof job !== "object") continue;
       if (state.handled[job.id]) {
         report(job.id, state.handled[job.id], "", true).catch(() => {});
         continue;
@@ -417,7 +421,7 @@ function cleanPerson(input, existing) {
 
 // Adds a person. Returns their code - the only time it is ever shown.
 async function addPerson(input) {
-  const p = cleanPerson(input || {});
+  const p = cleanPerson(Object.assign({ name: "" }, input));
   const code = newCode();
   p.codeHash = hashCode(code);
   p.hint = code.slice(-4);

@@ -24,7 +24,7 @@
     </button>
     <button class="help-btn" id="helpBtn" type="button"><span class="help-long">Need help?</span><span class="help-short">Help</span></button>
   </header>
-  <div id="alertBanners" class="alert-banners"></div>
+  <div id="alertBanners" class="alert-banners" role="status" aria-live="polite"></div>
 
   <main>
     <div id="pageMessage" class="page-message" role="status" aria-live="polite" hidden></div>
@@ -43,10 +43,10 @@
       </p>
       <p class="dropzone-sub">
         <span class="drag-only">or click to choose &mdash; PDF, Word, Excel, PowerPoint, photos</span>
-        <span class="tap-only">Choose a file or photo &mdash; PDF, Word, Excel, photos</span>
+        <span class="tap-only">Choose a file or photo &mdash; PDF, Word, Excel, PowerPoint, photos</span>
       </p>
       <input id="fileInput" type="file" hidden multiple
-             accept=".pdf,.doc,.docx,.odt,.rtf,.txt,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.png,.jpg,.jpeg,.gif,.bmp,.tif,.tiff,.webp,image/*">
+             accept=".pdf,.doc,.docx,.odt,.rtf,.txt,.csv,.xls,.xlsx,.xlsm,.ods,.ppt,.pptx,.odp,.png,.jpg,.jpeg,.gif,.bmp,.tif,.tiff,.webp,image/*">
     </div>
 
     <!-- The how-to video. YouTube is only loaded when tapped, to save data. -->

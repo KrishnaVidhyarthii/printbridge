@@ -393,7 +393,11 @@ async function showPrintModal(message) {
   $("printModal").hidden = false;
 }
 
+// While a print is being sent, closing would delete the files still to go.
+let sending = false;
+
 function closePrintModal() {
+  if (sending) return;
   closePageView();
   $("printModal").hidden = true;
   discardPending();
@@ -443,19 +447,24 @@ function uploadEntry(entry) {
     entry.error = message;
     renderPrintModal();
   };
+  // Once uploaded, the file waits its turn to be converted (one at a time),
+  // so allow one conversion's time for each file still being prepared.
   const watchForQuiet = () => {
     clearTimeout(quietTimer);
+    const waiting = entry.progress >= 100 ? pendingFiles.filter((e) => e.status === "preparing").length : 0;
     quietTimer = setTimeout(() => {
       xhr.abort();
       failed("The connection to the printing website stopped. Check the Wi-Fi and try again.");
-    }, quietMs);
+    }, quietMs * Math.max(1, waiting));
   };
   xhr.open("POST", "/api/uploads");
   xhr.upload.onprogress = (event) => {
+    if (event.lengthComputable) {
+      entry.progress = Math.round((event.loaded / event.total) * 100);
+      if (entry.progress >= 100) entry.status = "preparing";
+    }
     watchForQuiet();
     if (!event.lengthComputable) return;
-    entry.progress = Math.round((event.loaded / event.total) * 100);
-    if (entry.progress >= 100) entry.status = "preparing";
     renderFileList();
     if (pendingFiles[activeIndex] === entry) renderPreview();
   };
@@ -1222,6 +1231,7 @@ async function submitPrint() {
 
   button.disabled = true;
   button.textContent = "Sending...";
+  sending = true;
 
   const label = myName() || "Someone";
   const failed = [];
@@ -1248,6 +1258,7 @@ async function submitPrint() {
   }
   const skipped = pendingFiles.filter((e) => e.status === "error").map((e) => e.name + ": " + e.error);
 
+  sending = false;
   button.disabled = false;
   updatePrintButton();
 

@@ -27,7 +27,12 @@
     return fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { j._status = r.status; return j; }); });
   }
-  function show(id) { ["step-code", "step-send", "step-done"].forEach(function (s) { $(s).hidden = s !== id; }); }
+  // Focus moves to each step as it appears, so keyboards and screen readers follow along.
+  function show(id) {
+    ["step-code", "step-send", "step-done"].forEach(function (s) { $(s).hidden = s !== id; });
+    var first = id === "step-done" ? $("stTitle") : $(id).querySelector("input, select, button");
+    if (first) try { first.focus(); } catch (e) { /* fine */ }
+  }
   function say(el, text) { el.textContent = text || ""; el.hidden = !text; }
 
   var session = null; // { code, name, printers, publicKey, left, online }
@@ -53,7 +58,7 @@
       }
       say($("codeMsg"), "");
       session = { code: code, name: r.name, printers: r.printers || [], publicKey: r.publicKey, left: r.left, online: r.online };
-      if ($("remember").checked) store("pb-code", code);
+      store("pb-code", $("remember").checked ? code : null);
       fillSend();
       show("step-send");
     }).catch(function () {

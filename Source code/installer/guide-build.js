@@ -295,7 +295,7 @@ c.push(
   bullet("**Orientation**: **Automatic** turns each page to suit the paper. Choose **Portrait** or **Landscape** to force one."),
   bullet("**Size on paper**: **Fit to page** makes each page fill the paper; **Actual size** prints it at its real size (a page bigger than the paper is cut off)."),
   bullet("**Copies**, and **paper size**, **colour** and **double-sided** when the printer can do them, are shown with the other choices."),
-  bullet("**Print on another printer** (off unless you tick it): if your printer is off or fails, the job moves to another printer of the same kind. Tick the second, smaller box to let an inkjet and a laser printer stand in for each other. Dot matrix and receipt printers only ever use their own kind. Without a tick, a print only ever goes to the printer you chose."),
+  bullet("**If this printer is off or fails, print on another ... printer** (off unless you tick it): the job moves to another printer of the same kind. Tick **Or ... instead** as well to let an inkjet and a laser printer stand in for each other; when there is no printer of the same kind, that is the only box shown. Dot matrix and receipt printers only ever use their own kind. Without a tick, a print only ever goes to the printer you chose."),
   bullet("**Language**: choose it at the top of the page. Sinhala and Tamil are first; **More languages...** lists the rest. Each phone or computer remembers its choice."),
   P("The preview shows each page on a sheet of the chosen paper, so what you see is how it prints."),
   ...box("Keep in mind", [
@@ -406,7 +406,7 @@ c.push(
   H2("Things to know"),
   bullet("The program isn't signed with a code-signing certificate, which is why Windows SmartScreen shows a warning the first time. Some antivirus products may also be cautious about it."),
   bullet("There are no accounts: anyone on the network can print and manage printers. Keep it on a private office network, never on the internet."),
-  bullet("Nothing is printed or stored anywhere outside the office. Uploaded files are deleted after printing."),
+  bullet("Nothing is printed outside the office. Uploaded files are deleted after printing (or after 3 hours if never printed). Only if you use the optional drop page for printing from anywhere are files kept online, locked so only the office can open them, until collected (14 days at most)."),
   bullet("Every computer on 4.1.3 or newer updates itself (it checks every hour and waits until nothing is printing), and only installs versions signed with PrintBridge's update key. **Check PrintBridge** and the **Printers & setup** page show each computer's version."),
   bullet("On **Printers & setup**, check each printer's **Type** and **Colour**. They show on the printer cards and decide which printers can stand in for each other: a laser printer set as inkjet won't stand in for a laser."),
 );

@@ -40,7 +40,7 @@ const SETTINGS_DIR = process.env.PRINT_AGENT_DIR || BASE_DIR;
 const CONFIG_FILE = path.join(SETTINGS_DIR, "config.json");
 const STATUS_FILE = path.join(SETTINGS_DIR, "status.json");
 const DOWNLOAD_DIR = path.join(SETTINGS_DIR, "downloads");
-const VERSION = "4.2.12";
+const VERSION = "4.2.13";
 
 fs.mkdirSync(DOWNLOAD_DIR, { recursive: true });
 // Files left by a run that was stopped mid-job (power cut, update): never left lying around.
@@ -683,7 +683,7 @@ function connect() {
       // started fresh. Register again rather than stopping for good.
       console.log("The website no longer recognises this computer. Registering it again.");
       writeStatus("registering", "The website no longer recognised this computer - connecting it again.");
-      forgetTokenAndRegister();
+      forgetTokenAndRegister().catch((err) => console.log("Couldn't register again: " + err.message));
       return;
     }
 

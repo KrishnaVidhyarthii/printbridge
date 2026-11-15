@@ -25,6 +25,9 @@ In the Start menu, under "PrintBridge":
                          what to do if something isn't
   Restart PrintBridge   stops and starts it again (try this first if
                          something seems stuck)
+  Update PrintBridge now
+                        looks for a new version now (it installs by
+                         itself; otherwise that happens within about an hour)
   Read me               this file
 
 There is also a "PrintBridge" shortcut on the desktop, which opens the
@@ -48,10 +51,11 @@ From a phone, tablet or any computer:
    only those, choose portrait or landscape, tap a printer (each shows
    its maker, kind and colour), press Print.
 
-A print goes only to the printer you chose. Tick "Print on another
-printer" to let it move to another printer of the same kind if yours is
-off or fails (a second, smaller tick lets inkjet and laser stand in for
-each other). Choose a language (Sinhala, Tamil and more) at the top of
+A print goes only to the printer you chose. Tick "If this printer is
+off or fails, print on another ... printer" to let it move to another
+printer of the same kind (a second tick, "Or ... instead", lets inkjet
+and laser stand in for each other; with no printer of the same kind it
+is the only one shown). Choose a language (Sinhala, Tamil and more) at the top of
 the page. A 3-minute video guide: https://youtu.be/Cx2plyjPf7w
 (Sinhala: https://youtu.be/sP1R5dWC5Hw  Tamil: https://youtu.be/5sw9WdwODrY)
 Just the phone part, under a minute: https://youtu.be/R-5XXXhX6Mg

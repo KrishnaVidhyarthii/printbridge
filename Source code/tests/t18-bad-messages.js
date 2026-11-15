@@ -48,6 +48,15 @@ function send(messages) {
 
     const page = await request("GET", "/", { cookie: "device=%zz" });
     ok(page && page.status === 200, "a malformed cookie still gets the page");
+
+    const rebound = await request("POST", "/api/remote/disconnect", { host: "evil.example:" + PORT }, "{}");
+    ok(rebound && rebound.status === 403, "a request for another host name doesn't count as this computer");
+    const otherSite = await request("POST", "/api/remote/disconnect", { host: "localhost:" + PORT, origin: "https://evil.example" }, "{}");
+    ok(otherSite && otherSite.status === 403, "a request from another website doesn't count as this computer");
+    const own = await request("POST", "/api/remote/disconnect", { host: "localhost:" + PORT, origin: "http://localhost:" + PORT }, "{}");
+    ok(own && own.status !== 403, "this computer's own page still counts");
+    const badJson = await request("POST", "/api/remote/disconnect", { host: "localhost:" + PORT }, "{oops");
+    ok(badJson && badJson.status === 400, "a body that isn't JSON gets 400, not a server error");
   } finally {
     web.kill();
     fs.rmSync(dir, { recursive: true, force: true });

@@ -18,7 +18,7 @@
 //               the office's main computer can unwrap (RSA-OAEP + AES-GCM)
 //   st:<id>     what happened to a job, for the sender (kept a week)
 //   n:<code hash>:<day>   jobs sent today, for the daily limit
-//   rl:<ip>     wrong codes from one address (locked for 15 minutes after 10)
+//   rl:<ip>     an address locked for 15 minutes after 10 wrong codes
 //
 // So neither Cloudflare nor anyone who got into this account can read a
 // document, and codes can't be read back from it either.
@@ -30,7 +30,7 @@
 //
 // Free plan limits that matter here (Workers KV): 1,000 writes and 1,000
 // deletes a day for the whole account (shared with any other Workers) - each
-// printout takes about 6, the office saying "online" 144 - and 25 MB per value (files are
+// printout takes about 8 writes and 2 deletes, the office saying "online" 144 - and 25 MB per value (files are
 // limited to 20 MB).
 
 const CLAIM_CODE = "__CLAIM_CODE__";
@@ -98,11 +98,21 @@ async function locked(env, req) {
   return !!(r && r.n >= LOCK_AFTER);
 }
 
+// Wrong codes are counted in this Worker's memory and only the lock itself is
+// written to KV, so a flood of wrong codes can't use up the day's KV writes.
+// (A restarted Worker forgets its count; a code is too long to guess anyway.)
+const wrongCounts = new Map();
 async function wrongCode(env, req) {
-  const key = "rl:" + clientIp(req);
-  const r = (await getJson(env, key)) || { n: 0 };
-  r.n += 1;
-  await env.PB.put(key, JSON.stringify(r), { expirationTtl: LOCK_SECONDS });
+  const ip = clientIp(req);
+  const now = Date.now();
+  const r = wrongCounts.get(ip);
+  const n = r && now - r.since < LOCK_SECONDS * 1000 ? r.n + 1 : 1;
+  wrongCounts.set(ip, { n, since: n === 1 ? now : r.since });
+  if (wrongCounts.size > 5000) wrongCounts.clear();
+  if (n >= LOCK_AFTER) {
+    wrongCounts.delete(ip);
+    await env.PB.put("rl:" + ip, JSON.stringify({ n }), { expirationTtl: LOCK_SECONDS });
+  }
 }
 
 // The person a code belongs to, or null. Checked against the SHA-256 of the
@@ -298,7 +308,8 @@ async function senderApi(req, env, url) {
     if (!cfg.publicKey) return fail("Remote printing isn't set up at the office yet.", 503);
     const printer = String(form.get("printer") || "");
     if (!printersFor(person, cfg).includes(printer)) return fail("That printer isn't available to you.");
-    const name = String(form.get("name") || "").slice(0, 200);
+    // Shortened from the front, so a long name keeps its extension.
+    const name = String(form.get("name") || "").slice(-200);
     if (!ALLOWED.test(name)) return fail("Send a PDF, Word, Excel, PowerPoint, text or picture file.");
     const iv = String(form.get("iv") || "");
     const key = String(form.get("key") || "");
@@ -361,6 +372,9 @@ const CSP = [
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
+    if (!env.PB && (url.pathname.startsWith("/office/") || url.pathname.startsWith("/api/"))) {
+      return fail("This drop page isn't finished: in Cloudflare, bind a KV namespace to it with the name PB (see relay/README.md).", 500);
+    }
     try {
       if (url.pathname.startsWith("/office/")) return await officeApi(req, env, url);
       if (url.pathname.startsWith("/api/")) return await senderApi(req, env, url);

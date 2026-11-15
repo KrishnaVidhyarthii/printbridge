@@ -250,7 +250,7 @@ Get-NetIPAddress -InterfaceIndex $i -AddressFamily IPv4 -PrefixOrigin Manual | R
 Set-NetIPInterface -InterfaceIndex $i -AddressFamily IPv4 -Dhcp Enabled
 Set-DnsClientServerAddress -InterfaceIndex $i -ResetServerAddresses
 ipconfig /renew | Out-Null
-'ok'`);
+if ((Get-NetIPInterface -InterfaceIndex $i -AddressFamily IPv4).Dhcp -eq 'Enabled') { 'ok' }`);
     return r.ok && /ok/.test(r.stdout);
   }
   const a = await run("/usr/sbin/networksetup", ["-setdhcp", where.service]);

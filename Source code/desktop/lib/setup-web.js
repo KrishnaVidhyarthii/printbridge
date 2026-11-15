@@ -281,7 +281,7 @@ async function install(state) {
   const net = state.role === "main" ? state.net : null;
   const fixChange = net && net.found && (state.fixAddr ? (net.dhcp || net.ours) : net.ours);
   if (fixChange) steps.push({ id: "address", label: state.fixAddr ? "Fixing this computer's network address" : "Making this computer's network address automatic again", weight: 6 });
-  if (wantLO) steps.push({ id: "libreoffice", label: "Installing LibreOffice (about 300 MB)", weight: 90 });
+  if (wantLO) steps.push({ id: "libreoffice", label: "Installing LibreOffice (about 350 MB)", weight: 90 });
   progress.begin(steps);
 
   progress.start("settings");
@@ -430,7 +430,7 @@ function createServer(options) {
   let state = initialState();
   let resolveDone;
   // Set the moment "Set up PrintBridge" is pressed, before install() is
-  // awaited - so a timeout that fires while a slow install (e.g. the ~300MB
+  // awaited - so a timeout that fires while a slow install (e.g. the ~350 MB
   // LibreOffice download) is still running knows one is already under way,
   // rather than starting a second, concurrent one of its own. Two calls to
   // applyChoices()/vprinter.add()/power.save()+apply() at once could each
@@ -538,7 +538,7 @@ function createServer(options) {
       if (req.method === "POST" && url.pathname === "/install") {
         // Answers straight away and does the work in the background, so the
         // browser can show a progress bar instead of a page that keeps loading
-        // (LibreOffice alone is a 300 MB download).
+        // (LibreOffice alone is a 350 MB download).
         if (!installStarted) {
           installStarted = true;
           install(state).then(
@@ -561,7 +561,9 @@ function createServer(options) {
 }
 
 function listen(server) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
+    // e.g. another setup page is already open on this port
+    server.once("error", reject);
     server.listen(P.SETUP_WEB_PORT, "127.0.0.1", () => {
       const url = "http://127.0.0.1:" + P.SETUP_WEB_PORT + "/";
       console.log(B.NAME + " setup: open " + url + " to finish setting up this computer.");
@@ -635,7 +637,13 @@ async function runInstallFlow(options) {
   // A first install asks at the end whether to start now; an update starts
   // again by itself, as before (the old version was stopped to update it).
   const { server, done, installStarted, choice } = createServer({ offerStart: !P.isConfigured() });
-  await listen(server);
+  try {
+    await listen(server);
+  } catch (err) {
+    console.log("The setup wizard couldn't open (" + err.message + "); using the recommended settings.");
+    await applyCurrentSettings();
+    return { start: true };
+  }
   const timedOut = await Promise.race([done.then(() => false), wait(timeoutMs).then(() => true)]);
   if (!timedOut) return { start: choice() !== "later" }; // finished on its own - install() already applied everything
   if (installStarted()) {

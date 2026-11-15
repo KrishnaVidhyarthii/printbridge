@@ -9,7 +9,7 @@
 //   node publish-update.js upload           put them on GitHub as a new release
 //                                           (needs the "gh" tool, signed in)
 //   node publish-update.js all              sign, then upload
-//   node publish-update.js bump 4.1.4       raise the version number everywhere
+//   node publish-update.js bump 4.2.13      raise the version number everywhere
 //                                           it is written (do this first, then build)
 //
 // Options:  --key FILE    the private key (default: the folder below)
@@ -47,6 +47,7 @@ const opt = (name, fallback) => {
   const i = args.indexOf("--" + name);
   if (i === -1) return fallback;
   const v = args[i + 1];
+  if (name === "notes") return v === undefined ? fallback : v; // notes may start with "--"
   return v && !v.startsWith("--") ? v : true;
 };
 
@@ -140,7 +141,8 @@ function addPublicKey(pub, replace) {
 
 // Writes the new version number into every file that carries it.
 function bump(next) {
-  if (!/^\d{1,4}(\.\d{1,4}){1,3}$/.test(String(next || ""))) stop("give the new version number, for example:  node publish-update.js bump 4.1.4");
+  // Exactly three numbers: the Windows installer adds a fourth (OfficePrinting.nsi).
+  if (!/^\d{1,4}\.\d{1,4}\.\d{1,4}$/.test(String(next || ""))) stop("give the new version number, for example:  node publish-update.js bump 4.2.13");
   const v = version();
   const cmp = (a, b) => { const x = a.split(".").map(Number), y = b.split(".").map(Number); for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d; } return 0; };
   if (cmp(next, v) <= 0) stop("the new version must be higher than " + v + ".");
@@ -358,6 +360,12 @@ async function publishToRepoWithApi(repo, v, title, notes, assets, token) {
   // download buttons (releases/latest/download/...) never point at a missing file.
   let created = false;
   if (rel.status === 404) {
+    // A draft left by an earlier run that stopped part-way isn't found by its tag: carry on with it.
+    const list = await ghRequest("GET", "https://api.github.com/repos/" + repo + "/releases?per_page=30", token);
+    const draft = Array.isArray(list.json) && list.json.find((r) => r.draft && r.tag_name === tag);
+    if (draft) { rel = { status: 200, json: draft }; created = true; }
+  }
+  if (rel.status === 404) {
     created = true;
     const payload = Buffer.from(JSON.stringify({
       tag_name: tag,
@@ -378,7 +386,8 @@ async function publishToRepoWithApi(repo, v, title, notes, assets, token) {
     const name = path.basename(file);
     const old = existing.find((a) => a.name === name);
     if (old && old.id) {
-      await ghRequest("DELETE", "https://api.github.com/repos/" + repo + "/releases/assets/" + old.id, token);
+      const gone = await ghRequest("DELETE", "https://api.github.com/repos/" + repo + "/releases/assets/" + old.id, token);
+      if (gone.status >= 300 && gone.status !== 404) throw new Error("Couldn't replace " + name + " on " + repo + " (" + gone.status + ").");
     }
     const data = fs.readFileSync(file);
     say("  Uploading " + name + " (" + Math.max(1, Math.round(data.length / 1024)) + " KB)...");
@@ -400,7 +409,8 @@ async function upload(info) {
   const repo = info ? info.repo : githubRepo();
   if (!fs.existsSync(path.join(out, "latest.json.sig"))) stop("nothing signed for " + v + " yet. Run sign first.");
   const manifest = JSON.parse(fs.readFileSync(path.join(out, "latest.json"), "utf8"));
-  const assets = fs.readdirSync(out).map((n) => path.join(out, n));
+  // Only what belongs in a release (not Finder's .DS_Store and the like).
+  const assets = fs.readdirSync(out).filter((n) => /^(PrintBridge.*\.(pkg|dmg|exe)|latest\.json(\.sig)?)$/.test(n)).map((n) => path.join(out, n));
   if (!repo) {
     say("\nUpload every file in " + out + " so that latest.json and latest.json.sig are at\n  " + CONFIG.MANIFEST_URL + "\n(with the installers next to them).");
     return;
