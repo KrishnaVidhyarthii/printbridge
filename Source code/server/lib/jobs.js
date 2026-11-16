@@ -474,6 +474,7 @@ function listActiveQueue(viewerDeviceId) {
       printerName: job.printerName,
       printerId: job.printerId,
       printerOnline,
+      printerProblem: printerOnline ? agents.problemOf(printer) : "",
       status: job.status,
       statusMessage: isMine ? job.statusMessage : "",
       etaSeconds: estimateWaitSeconds(job, aheadOnSamePrinter, printerOnline),
@@ -503,7 +504,21 @@ agents.events.on("agent-offline", handleAgentOffline);
 agents.events.on("agent-online", broadcastQueue);
 agents.events.on("agent-offline", broadcastQueue);
 
+// "Clear this printer's queue" (Printers & setup): nothing still waiting for
+// that printer is printed, and its computer empties the printer's own queue.
+// Returns how many of PrintBridge's own jobs were cancelled.
+function clearPrinter(printer) {
+  let n = 0;
+  for (const job of db.jobs.filter((j) => j.printerId === printer.id && !FINISHED.has(j.status))) {
+    finish(job, "cancelled", "Cleared from " + printer.name + "'s queue at the office. Send it again if you still need it.");
+    n++;
+  }
+  agents.sendToAgent(printer.agentId, { type: "clear-queue", printer: printer.name });
+  return n;
+}
+
 module.exports = {
+  clearPrinter,
   cleanOptions,
   clampOptions,
   printerSupports,

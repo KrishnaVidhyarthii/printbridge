@@ -57,6 +57,9 @@
     .poster .steps li { margin-bottom: 4px; }
     .poster .foot { margin-top: 30px; font-size: 14px; color: var(--muted); }
 
+    .poster.trouble .steps { max-width: 560px; font-size: 18px; line-height: 1.6; }
+    .poster.trouble .steps li { margin-bottom: 12px; }
+    .poster[hidden] { display: none; }
     @media print {
       body { background: #fff; }
       .poster-controls, header { display: none !important; }
@@ -129,6 +132,7 @@
         <option value="card">Desk card (9 &times; 9 cm, 4 to a page)</option>
         <option value="sticker">Printer sticker (5.5 &times; 6 cm, 12 to a page)</option>
         <option value="mini">Mini sticker (3.5 &times; 4 cm, 30 to a page)</option>
+        <option value="trouble">&ldquo;Printer acting up?&rdquo; help sign (one A4 page)</option>
       </select>
     </div>
     <div class="row" style="max-width:560px;flex-wrap:wrap">
@@ -162,6 +166,22 @@
   </div>
 
   <div class="labels" id="labels" hidden></div>
+
+  <!-- What to do when a printer jams or prints old pages: so people fix the
+       printer instead of thinking PrintBridge is broken. -->
+  <div class="poster trouble" id="trouble" hidden>
+    <div class="poster-brand">PRINTBRIDGE</div>
+    <h2>Printer acting up?</h2>
+    <p class="tagline">It's almost always the printer, not PrintBridge.</p>
+    <ol class="steps">
+      <li><strong>Look at the printing page.</strong> A red note on a printer (&ldquo;Paper jam&rdquo;, &ldquo;Out of paper&rdquo;, &ldquo;Switched off&rdquo;) says what is wrong with it.</li>
+      <li><strong>Check the printer itself:</strong> paper in the tray, no jammed sheet, covers shut, no blinking error light, switched on.</li>
+      <li><strong>Waiting printouts are safe.</strong> They print once the printer is fixed. Anything stuck more than 30 minutes is cancelled by itself, so old pages don't come out hours later. You'll see &ldquo;send it again&rdquo;.</li>
+      <li><strong>In a hurry?</strong> Print on another printer: pick a different one on the printing page.</li>
+      <li><strong>Still stuck?</strong> Press <strong>Need help?</strong> on the printing page. It tells everyone with the page open.</li>
+    </ol>
+    <p class="foot">Pages from different people never mix: each printer finishes one printout before starting the next.</p>
+  </div>
 
   <script src="/vendor/qrcode.js"></script>
   <script src="/poster.js"></script>

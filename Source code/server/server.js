@@ -30,7 +30,7 @@ const help = require("./lib/help");
 const held = require("./lib/held");
 
 const PORT = parseInt(process.env.PORT, 10) || 3000;
-const VERSION = "4.2.13";
+const VERSION = "4.2.14";
 const MAX_UPLOAD_MB = parseInt(process.env.MAX_UPLOAD_MB, 10) || 50;
 const UPLOAD_DIR = jobs.UPLOAD_DIR;
 
@@ -544,6 +544,32 @@ app.post("/api/manage/printers/:id/color", (req, res) => {
   }
   if (!agents.setColorMode(printer, req.body && req.body.mode)) {
     res.status(400).json({ error: "Choose colour, black and white, or automatic." });
+    return;
+  }
+  res.json({ ok: true });
+});
+
+// Throws away everything waiting for a printer, here and in its computer's
+// own queue - for after a jam, so a backlog doesn't all come out at once.
+app.post("/api/manage/printers/:id/clear-queue", (req, res) => {
+  const printer = agents.findPrinter(req.params.id);
+  if (!printer) {
+    res.status(404).json({ error: "No such printer." });
+    return;
+  }
+  const cancelled = jobs.clearPrinter(printer);
+  res.json({ ok: true, cancelled, computerOnline: agents.isOnline(printer.agentId) });
+});
+
+// Both sides: automatic (what the computer says), yes or no.
+app.post("/api/manage/printers/:id/duplex", (req, res) => {
+  const printer = agents.findPrinter(req.params.id);
+  if (!printer) {
+    res.status(404).json({ error: "No such printer." });
+    return;
+  }
+  if (!agents.setDuplexMode(printer, req.body && req.body.mode)) {
+    res.status(400).json({ error: "Choose automatic, yes or no." });
     return;
   }
   res.json({ ok: true });

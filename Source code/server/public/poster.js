@@ -9,7 +9,7 @@ let current = null; // the address on the sign now
 
 // The smaller sizes print a whole A4 sheet of the same label, to cut out.
 const SHEETS = { card: 4, sticker: 12, mini: 30 };
-const PRINT_TEXT = { wall: "Print this sign", card: "Print the desk cards", sticker: "Print the stickers", mini: "Print the stickers" };
+const PRINT_TEXT = { wall: "Print this sign", card: "Print the desk cards", sticker: "Print the stickers", mini: "Print the stickers", trouble: "Print the help sign" };
 
 (async function start() {
   $("printPoster").onclick = () => window.print();
@@ -78,12 +78,13 @@ function buildAddressList(where) {
 function showSize() {
   const size = $("sizePick").value;
   $("poster").hidden = size !== "wall";
-  $("labels").hidden = size === "wall";
+  $("trouble").hidden = size !== "trouble";
+  $("labels").hidden = size === "wall" || size === "trouble";
   $("printPoster").textContent = PRINT_TEXT[size];
   const box = $("labels");
   box.className = "labels " + size;
   box.innerHTML = "";
-  if (size === "wall" || !current) return;
+  if (size === "wall" || size === "trouble" || !current) return;
   const label = document.createElement("div");
   label.className = "label";
   label.innerHTML = '<span class="l-brand">PRINTBRIDGE</span><p class="l-title">Scan to print</p>' + qrSvg(current.url) + '<p class="l-addr"></p>';

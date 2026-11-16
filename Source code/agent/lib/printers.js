@@ -248,4 +248,4 @@ async function listPrintersWithCapabilities() {
   return out;
 }
 
-module.exports = { listPrintersWithCapabilities, isPretendPrinter, IS_WINDOWS, run };
+module.exports = { listPrintersWithCapabilities, isPretendPrinter, IS_WINDOWS, run, runPowerShell };

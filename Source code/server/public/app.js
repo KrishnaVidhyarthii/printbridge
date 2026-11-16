@@ -210,6 +210,7 @@ async function refreshAddress() {
   try {
     const hello = await api("/api/hello");
     printers = hello.printers || [];
+    renderPrinterProblems();
     maxUploadMb = hello.maxUploadMb || 50;
     for (const alert of hello.openHelp || []) showAlertBanner(alert, true);
   } catch (err) {
@@ -1022,7 +1023,8 @@ function renderPrinterPick() {
     const option = document.createElement("button");
     option.type = "button";
     option.className = "printer-option kind-" + (KINDS[printer.kind] ? printer.kind : "unknown") +
-      (printer.id === chosenPrinterId ? " selected" : "") + (printer.online ? "" : " is-off");
+      (printer.id === chosenPrinterId ? " selected" : "") + (printer.online ? "" : " is-off") +
+      (color === true ? " is-colour" : color === false ? " is-mono" : "");
     option.setAttribute("aria-pressed", printer.id === chosenPrinterId ? "true" : "false");
     option.innerHTML =
       '<span class="ptype" aria-hidden="true">' + kind.icon + "</span>" +
@@ -1033,7 +1035,8 @@ function renderPrinterPick() {
       (color === true ? '<span class="chip colour">Colour</span>' : color === false ? '<span class="chip mono">Black &amp; white</span>' : "") +
       "</span>" +
       '<span class="pmeta"><span class="dot ' + (printer.online ? "on" : "off") + '"></span>' +
-      escapeHtml(printer.computerName) + (printer.online ? "" : " &mdash; off right now, it will wait") + "</span></span>";
+      escapeHtml(printer.computerName) + (printer.online ? "" : " &mdash; off right now, it will wait") + "</span>" +
+      (printer.online && printer.problem ? '<span class="pproblem">' + escapeHtml(printer.problem) + "</span>" : "") + "</span>";
     option.onclick = () => {
       chosenPrinterId = printer.id;
       renderPrinterPick();
@@ -1183,6 +1186,22 @@ async function loadPrinters(force) {
   // Never rebuild the form underneath someone who is filling it in.
   if (!force && !$("printModal").hidden) return;
   printers = await api("/api/printers");
+  renderPrinterProblems();
+}
+
+// "Canon: paper jam" for everyone, so a stuck printer isn't taken for
+// PrintBridge being broken. Comes from the printer's own computer.
+function renderPrinterProblems() {
+  const box = $("printerProblems");
+  if (!box) return;
+  const bad = printers.filter((p) => p.online && p.problem);
+  box.hidden = !bad.length;
+  box.innerHTML = bad.map((p) =>
+    '<div class="printer-problem-row"><strong>' + escapeHtml(p.name) + ":</strong> " + escapeHtml(p.problem) + "</div>"
+  ).join("") + (bad.length
+    ? '<div class="hint">' + (bad.length > 1 ? "These printers need" : "This printer needs") +
+      " fixing at the printer itself; PrintBridge is fine. Printouts for it wait up to 30 minutes, then are cancelled so they don't come out much later.</div>"
+    : "");
 }
 
 // --- sending the job -------------------------------------------------------
@@ -1477,7 +1496,8 @@ function renderQueue(list) {
     printerCell.innerHTML =
       '<span class="printer-tag" style="background:' + colorForPrinter(job.printerName) + '"></span>' +
       escapeHtml(job.printerName) +
-      (job.printerOnline ? "" : ' <span class="offline-note">(off)</span>');
+      (job.printerOnline ? "" : ' <span class="offline-note">(off)</span>') +
+      (job.printerProblem ? '<div class="pproblem">' + escapeHtml(job.printerProblem) + "</div>" : "");
     tr.appendChild(printerCell);
 
     // Your own jobs show the file name and, under it, what is happening to

@@ -22,7 +22,8 @@ const WebSocket = require("ws");
 
 const { listPrintersWithCapabilities } = require("./lib/printers");
 const durable = require("./lib/durable");
-const { printFile } = require("./lib/print");
+const { printFile, waitUntilPrinterIdle } = require("./lib/print");
+const { printerHealth, clearPrinterQueue, STALE_MINUTES } = require("./lib/health");
 
 // When bundled with pkg, __dirname points *inside* the packaged snapshot,
 // which cannot be written to and does not sit next to the real .exe. In
@@ -40,7 +41,7 @@ const SETTINGS_DIR = process.env.PRINT_AGENT_DIR || BASE_DIR;
 const CONFIG_FILE = path.join(SETTINGS_DIR, "config.json");
 const STATUS_FILE = path.join(SETTINGS_DIR, "status.json");
 const DOWNLOAD_DIR = path.join(SETTINGS_DIR, "downloads");
-const VERSION = "4.2.13";
+const VERSION = "4.2.14";
 
 fs.mkdirSync(DOWNLOAD_DIR, { recursive: true });
 // Files left by a run that was stopped mid-job (power cut, update): never left lying around.
@@ -670,6 +671,15 @@ function connect() {
     if (message.type === "job") {
       handleJob(message).catch((err) => console.log("Job error:", err.message));
     }
+    if (message.type === "clear-queue" && message.printer) {
+      const name = String(message.printer);
+      clearedAt.set(name, Date.now());
+      clearPrinterQueue(name).then((ok) => {
+        console.log("Cleared " + name + "'s queue" + (ok ? "." : " (Windows or macOS reported a problem)."));
+        lastHealthJson = ""; // tell the website straight away
+        checkHealth();
+      });
+    }
   });
 
   socket.on("close", (code, reason) => {
@@ -747,11 +757,39 @@ function startPrinterRefresh() {
       console.log("Printer list changed, sent an update.");
     }
   }, 5 * 60 * 1000);
+  healthTimer = setInterval(() => { checkHealth().catch(() => {}); }, 60 * 1000);
+  setTimeout(() => { checkHealth().catch(() => {}); }, 5000);
 }
 
 function stopPrinterRefresh() {
   if (refreshTimer) clearInterval(refreshTimer);
   refreshTimer = null;
+  if (healthTimer) clearInterval(healthTimer);
+  healthTimer = null;
+  lastHealthJson = "";
+}
+
+// Every minute: is each printer jammed, out of paper, switched off...? Sent
+// only when that changes. It also cancels printouts stuck over half an hour
+// in a printer's own queue (lib/health.js).
+let healthTimer = null;
+let lastHealthJson = "";
+let healthBusy = false;
+async function checkHealth() {
+  if (healthBusy || config.dryRun) return;
+  healthBusy = true;
+  try {
+    const list = await printerHealth();
+    if (!list) return;
+    for (const p of list) if (p.removed) console.log("Cancelled " + p.removed + " printout(s) stuck over " + STALE_MINUTES + " minutes in " + p.name + "'s queue.");
+    const printers = list.map(({ name, problem, waiting }) => ({ name, problem, waiting }));
+    const asJson = JSON.stringify(printers);
+    if (asJson === lastHealthJson) return;
+    lastHealthJson = asJson;
+    send({ type: "health", printers });
+  } finally {
+    healthBusy = false;
+  }
 }
 
 // --- doing a job --------------------------------------------------------
@@ -847,13 +885,28 @@ function rememberJob(key, entry) {
 let printingNow = 0;
 let printingSince = 0;
 
+// One job at a time for each printer, in the order they arrived, so one
+// person's pages never come out in the middle of another's.
+const printerTurns = new Map();
+
+// Bumped when someone clears a printer's queue on the Printers & setup page:
+// printouts that arrived before that are not printed.
+const clearedAt = new Map();
+
 async function handleJob(job) {
+  job.arrivedAt = Date.now();
   printingNow++;
   printingSince = Date.now();
   writeStatus(lastState, lastMessage);
+  const name = String(job.printer || "");
+  const ahead = printerTurns.get(name) || Promise.resolve();
+  const mine = ahead.then(() => handleOneJob(job), () => handleOneJob(job));
+  const turn = mine.catch(() => {});
+  printerTurns.set(name, turn);
   try {
-    return await handleOneJob(job);
+    return await mine;
   } finally {
+    if (printerTurns.get(name) === turn) printerTurns.delete(name);
     printingNow = Math.max(0, printingNow - 1);
     writeStatus(lastState, lastMessage);
   }
@@ -900,6 +953,22 @@ async function handleOneJob(job) {
   }
 
   try {
+    if (!config.dryRun) {
+      // Also covers printouts sent from this computer's own programs. A
+      // printout that couldn't go for half an hour is not sent at all: coming
+      // out hours later, once someone fixes the printer, only confuses people.
+      reportStatus(job.jobId, "accepted", "Waiting for " + job.printer + " to finish what it is printing.");
+      const left = job.arrivedAt + STALE_MINUTES * 60 * 1000 - Date.now();
+      const waited = left > 0 ? await waitUntilPrinterIdle(job.printer, left) : "timeout";
+      if ((clearedAt.get(job.printer) || 0) > job.arrivedAt) {
+        const cleared = new Error("Not printed: " + job.printer + "'s queue was cleared at the office. Send it again if you still need it.");
+        cleared.noFailover = true; // cleared on purpose: not to be printed somewhere else either
+        throw cleared;
+      }
+      if (waited === "timeout") {
+        throw new Error(job.printer + " was busy or stuck for " + STALE_MINUTES + " minutes, so this wasn't printed (it would have come out much later). Check the printer, then send it again.");
+      }
+    }
     reportStatus(job.jobId, "printing", "Sending to " + job.printer + ".");
     const result = await printFile(job.printer, filePath, job.options || {}, config);
     console.log("  printed:", result.detail);

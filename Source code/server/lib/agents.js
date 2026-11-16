@@ -88,21 +88,37 @@ function rememberPrinters(agent, printers) {
 const COLOR_MODES = new Set(["auto", "color", "mono"]);
 const PRINTER_TYPES = new Set(["auto", "inkjet", "laser", "dotmatrix", "thermal"]);
 
+// Both sides works the same way: "auto" believes the computer, "yes" and
+// "no" overrule it (a printer can say it has duplex when it hasn't).
+const DUPLEX_MODES = new Set(["auto", "yes", "no"]);
+
 function applyColorMode(record) {
   // Printers saved before this existed only have what the computer said.
   if (record.reportedCapabilities === undefined) record.reportedCapabilities = record.capabilities || null;
   const mode = COLOR_MODES.has(record.colorMode) ? record.colorMode : "auto";
+  const duplex = DUPLEX_MODES.has(record.duplexMode) ? record.duplexMode : "auto";
   const reported = record.reportedCapabilities;
-  if (mode === "auto") {
+  if (mode === "auto" && duplex === "auto") {
     record.capabilities = reported;
     return;
   }
-  record.capabilities = Object.assign({}, reported || {}, { color: mode === "color" });
+  record.capabilities = Object.assign({}, reported || {},
+    mode === "auto" ? {} : { color: mode === "color" },
+    duplex === "auto" ? {} : { duplex: duplex === "yes" });
 }
 
 function setColorMode(record, mode) {
   if (!COLOR_MODES.has(mode)) return false;
   record.colorMode = mode;
+  applyColorMode(record);
+  save();
+  events.emit("printers-changed");
+  return true;
+}
+
+function setDuplexMode(record, mode) {
+  if (!DUPLEX_MODES.has(mode)) return false;
+  record.duplexMode = mode;
   applyColorMode(record);
   save();
   events.emit("printers-changed");
@@ -132,6 +148,31 @@ function setPrinterType(record, type) {
   return true;
 }
 
+// How each printer is doing (jam, no paper...), as its computer last said.
+// Kept in memory only: it is stale the moment that computer goes quiet.
+const health = new Map(); // printer id -> { problem, waiting, at }
+const HEALTH_FRESH_MS = 3 * 60 * 1000;
+
+function rememberHealth(agentId, list) {
+  for (const item of list) {
+    if (!item || typeof item !== "object") continue;
+    const id = printerId(agentId, String(item.name || "").trim());
+    if (!db.printers.some((p) => p.id === id)) continue;
+    health.set(id, {
+      problem: String(item.problem || "").slice(0, 120),
+      waiting: Math.max(0, parseInt(item.waiting, 10) || 0),
+      at: Date.now(),
+    });
+  }
+}
+
+// "" when fine (or nothing is known); else a short reason like "Paper jam".
+function problemOf(printer) {
+  const h = printer && health.get(printer.id);
+  if (!h || !isOnline(printer.agentId) || Date.now() - h.at > HEALTH_FRESH_MS) return "";
+  return h.problem;
+}
+
 // The printer list the print page shows. Hidden printers are ones someone
 // switched off on the Manage page - broken, private office, whatever.
 function listPrinters() {
@@ -148,6 +189,7 @@ function listPrinters() {
         printerType: PRINTER_TYPES.has(p.printerType) ? p.printerType : "auto",
         kind: kindOf(p),
         capabilities: p.capabilities,
+        problem: problemOf(p),
       };
     })
     .sort((a, b) => {
@@ -171,6 +213,10 @@ function listPrintersForManaging() {
         printerType: PRINTER_TYPES.has(p.printerType) ? p.printerType : "auto",
         kind: kindOf(Object.assign({}, p, { printerType: "auto" })), // what "Automatic" means for it
         colorMode: COLOR_MODES.has(p.colorMode) ? p.colorMode : "auto",
+        duplexMode: DUPLEX_MODES.has(p.duplexMode) ? p.duplexMode : "auto",
+        reportedDuplex: p.reportedCapabilities === undefined
+          ? (p.capabilities ? p.capabilities.duplex : null)
+          : (p.reportedCapabilities ? p.reportedCapabilities.duplex : null),
         // What the computer itself said (true, false, or null: doesn't know).
         reportedColor: p.reportedCapabilities === undefined
           ? (p.capabilities ? p.capabilities.color : null)
@@ -272,6 +318,12 @@ function handleConnection(socket) {
       return;
     }
 
+    // Jam, no paper, switched off... (agent/lib/health.js), every minute when it changes.
+    if (message.type === "health") {
+      if (Array.isArray(message.printers)) rememberHealth(agentId, message.printers);
+      return;
+    }
+
     // Job progress: queued -> downloading -> printing -> done / failed.
     if (message.type === "status") {
       events.emit("status", {
@@ -328,10 +380,12 @@ module.exports = {
   sendToAgent,
   isOnline,
   listPrinters,
+  problemOf,
   listPrintersForManaging,
   findPrinter,
   canPrintTo,
   setColorMode,
+  setDuplexMode,
   setPrinterType,
   kindOf,
   findAgentByToken,

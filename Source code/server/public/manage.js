@@ -47,6 +47,7 @@ async function loadPrinters() {
   const list = await api("/api/manage/printers");
   const body = $("printerTable").querySelector("tbody");
   body.innerHTML = "";
+  fillClearPick(list);
 
   for (const printer of list) {
     const tr = document.createElement("tr");
@@ -63,6 +64,7 @@ async function loadPrinters() {
 
     tr.appendChild(typeCell(printer));
     tr.appendChild(colorCell(printer));
+    tr.appendChild(duplexCell(printer));
 
     const showCell = document.createElement("td");
     // Says what the printer is now, and what pressing it will do. Green
@@ -152,27 +154,40 @@ function typeCell(printer) {
   return cell;
 }
 
-// Colour or black and white only. "Automatic" goes by what the printer's
-// computer says; the other two overrule it when that is wrong.
+// Colour or black and white, and both sides or not. "Automatic" goes by
+// what the printer's computer says; the others overrule it when that is wrong.
 const COLOR_CHOICES = [["auto", "Automatic"], ["color", "Colour"], ["mono", "Black & white"]];
+const DUPLEX_CHOICES = [["auto", "Automatic"], ["yes", "Yes"], ["no", "No"]];
 
 function colorCell(printer) {
+  const found = printer.reportedColor === true ? "colour"
+    : printer.reportedColor === false ? "black & white" : "not known";
+  return choiceCell(printer, COLOR_CHOICES, printer.colorMode, "color", "Colour for ", found);
+}
+
+function duplexCell(printer) {
+  const found = printer.reportedDuplex === true ? "it can"
+    : printer.reportedDuplex === false ? "it can't" : "not known";
+  return choiceCell(printer, DUPLEX_CHOICES, printer.duplexMode || "auto", "duplex", "Both sides for ", found);
+}
+
+function choiceCell(printer, choices, current, endpoint, groupLabel, found) {
   const cell = document.createElement("td");
   const seg = document.createElement("div");
   seg.className = "seg color-seg";
   seg.setAttribute("role", "group");
-  seg.setAttribute("aria-label", "Colour for " + printer.name);
-  for (const [mode, label] of COLOR_CHOICES) {
+  seg.setAttribute("aria-label", groupLabel + printer.name);
+  for (const [mode, label] of choices) {
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = label;
-    if (printer.colorMode === mode) button.className = "on";
-    button.setAttribute("aria-pressed", String(printer.colorMode === mode));
+    if (current === mode) button.className = "on";
+    button.setAttribute("aria-pressed", String(current === mode));
     button.onclick = async () => {
-      if (printer.colorMode === mode) return;
+      if (current === mode) return;
       for (const b of seg.querySelectorAll("button")) b.disabled = true;
       try {
-        await api("/api/manage/printers/" + encodeURIComponent(printer.id) + "/color", {
+        await api("/api/manage/printers/" + encodeURIComponent(printer.id) + "/" + endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ mode }),
@@ -190,9 +205,7 @@ function colorCell(printer) {
   const note = document.createElement("div");
   note.className = "hint";
   note.style.marginTop = "4px";
-  const found = printer.reportedColor === true ? "colour"
-    : printer.reportedColor === false ? "black & white" : "not known";
-  note.textContent = printer.colorMode === "auto"
+  note.textContent = current === "auto"
     ? "The computer says: " + found
     : "Set by hand (the computer says: " + found + ")";
   cell.appendChild(note);
@@ -263,3 +276,36 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
+
+// --- Printer tools: clear a printer's queue (tucked away in a <details>) ----
+
+function fillClearPick(list) {
+  const pick = $("clearPick");
+  if (!pick || document.activeElement === pick) return;
+  const was = pick.value;
+  pick.innerHTML = "";
+  for (const p of list) {
+    const o = document.createElement("option");
+    o.value = p.id;
+    o.textContent = p.name + " (" + p.computerName + ")";
+    pick.appendChild(o);
+  }
+  if (list.some((p) => p.id === was)) pick.value = was;
+  $("clearQueue").disabled = !list.length;
+}
+
+$("clearQueue").onclick = async () => {
+  const pick = $("clearPick");
+  const name = pick.selectedOptions[0] ? pick.selectedOptions[0].textContent : "";
+  if (!pick.value || !confirm("Clear the queue of " + name + "?\n\nEverything waiting for it is thrown away and won't print. People will need to send theirs again.")) return;
+  $("clearQueue").disabled = true;
+  try {
+    const r = await api("/api/manage/printers/" + encodeURIComponent(pick.value) + "/clear-queue", { method: "POST" });
+    setPageMessage("Cleared. " + (r.cancelled === 1 ? "1 printout" : r.cancelled + " printouts") + " from PrintBridge cancelled" +
+      (r.computerOnline ? ", and the printer's own queue on its computer emptied." : ". Its computer is off right now: once it is back on, clear its queue here again."), "ok");
+  } catch (err) {
+    setPageMessage(err.message, "error");
+  } finally {
+    $("clearQueue").disabled = false;
+  }
+};

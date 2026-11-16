@@ -41,7 +41,7 @@
       <h2>Printers</h2>
       <div class="table-scroll"><table id="printerTable">
         <thead>
-          <tr><th>Printer</th><th>On which computer</th><th>Type</th><th>Colour or black &amp; white?</th><th>Shown to people?</th></tr>
+          <tr><th>Printer</th><th>On which computer</th><th>Type</th><th>Colour or black &amp; white?</th><th>Prints on both sides?</th><th>Shown to people?</th></tr>
         </thead>
         <tbody></tbody>
       </table></div>
@@ -51,7 +51,22 @@
         They also decide which printers may stand in for each other when someone
         ticks &ldquo;If this printer is off or fails, print on another one of the same kind&rdquo;, so check they are right: a
         laser printer set as inkjet won&rsquo;t stand in for a laser.
+        &ldquo;Prints on both sides?&rdquo; decides whether people are offered double-sided
+        printing on it; set it by hand when the computer gets it wrong.
       </p>
+      <!-- Tucked away on purpose: only for whoever has just fixed a jam. -->
+      <details class="tools">
+        <summary>Printer tools</summary>
+        <p class="hint" style="margin-top:6px">
+          After a jam, printouts that piled up can all come out at once. Clearing a
+          printer's queue throws away everything waiting for it (people see
+          &ldquo;cleared, send it again&rdquo;). Whatever is already coming out still finishes.
+        </p>
+        <div class="row" style="max-width:560px;flex-wrap:wrap">
+          <select id="clearPick" aria-label="Printer whose queue to clear" style="flex:1 1 220px;min-width:0"></select>
+          <button type="button" class="danger" id="clearQueue" style="flex:0 0 auto">Clear its queue</button>
+        </div>
+      </details>
     </div>
 
     <div class="card">

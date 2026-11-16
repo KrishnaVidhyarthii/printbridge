@@ -23,6 +23,7 @@ websites (`fake-web.js`) on spare ports, so nothing else needs to be running.
     node t17-update-now.js  "Update PrintBridge now" shows a message window saying what it found, never a terminal
     node t18-bad-messages.js  malformed network messages, printer lists and cookies from anyone on the network don't crash the main computer
     node t19-dialogs.js       every pop-up on the print page tells screen readers it is a pop-up, and what it is called
+    node t20-printer-settings.js  both sides set by hand, printer problems (jam, no paper) shown, clearing a printer's queue
 
 These run on Linux/macOS. The Windows-only parts (the Task Scheduler task,
 the installer) are covered by manual checks on Windows and Mac.

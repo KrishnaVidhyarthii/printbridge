@@ -7,7 +7,7 @@
 
 const fs = require("fs");
 const path = require("path");
-const { run, IS_WINDOWS } = require("./printers");
+const { run, runPowerShell, IS_WINDOWS } = require("./printers");
 
 // Stopped part-way: some pages may be out, so it must not be printed again
 // in full on another printer (noFailover tells the main computer so).
@@ -211,6 +211,39 @@ async function printOnWindows(printerName, filePath, options, config) {
   );
 }
 
+// --- waiting for the printer to finish -----------------------------------
+//
+// Handing a job to Windows or macOS is quick; the printer then works
+// through it for minutes. Sending the next job only once the printer's own
+// queue is empty means two people's pages never come out mixed together.
+
+// How many jobs are in the printer's queue on this computer, or null if
+// that can't be found out (then nobody waits on it).
+async function jobsInQueue(printerName) {
+  if (IS_WINDOWS) {
+    const name = String(printerName).replace(/'/g, "''");
+    const r = await runPowerShell("@(Get-PrintJob -PrinterName '" + name + "' -ErrorAction Stop).Count");
+    const n = parseInt(String(r.stdout || "").trim(), 10);
+    return r.ok && Number.isFinite(n) ? n : null;
+  }
+  const r = await run("lpstat", ["-o", printerName], { timeout: 15000 });
+  if (!r.ok && (r.stderr || "").trim()) return null;
+  return String(r.stdout || "").split("\n").filter((line) => line.trim()).length;
+}
+
+// Resolves once the printer's queue is empty, or after maxMs (a jammed
+// printer must not hold up every other job for ever). Returns how it ended.
+async function waitUntilPrinterIdle(printerName, maxMs, everyMs) {
+  const until = Date.now() + (maxMs || 10 * 60 * 1000);
+  for (;;) {
+    const n = await jobsInQueue(printerName).catch(() => null);
+    if (n === null) return "unknown";
+    if (n === 0) return "idle";
+    if (Date.now() >= until) return "timeout";
+    await new Promise((resolve) => setTimeout(resolve, everyMs || 3000));
+  }
+}
+
 // --- the one function the agent calls -----------------------------------
 
 async function printFile(printerName, filePath, options, config) {
@@ -225,4 +258,4 @@ async function printFile(printerName, filePath, options, config) {
   return printWithLp(printerName, filePath, options);
 }
 
-module.exports = { printFile, sumatraSettings, lpArguments };
+module.exports = { printFile, sumatraSettings, lpArguments, waitUntilPrinterIdle };

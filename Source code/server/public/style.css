@@ -352,6 +352,22 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent-soft
 .printer-option.kind-dotmatrix { --kind: #d97706; }
 .printer-option.kind-thermal { --kind: #78716c; }
 .printer-option.selected { border-left-color: var(--kind); box-shadow: 0 0 0 1.5px var(--accent); }
+/* Colour printers get a faint rainbow wash and black & white ones a darker
+   grey, so the two can be told apart at a glance (selected or not). */
+.printer-option.is-colour, .printer-option.is-colour:hover, .printer-option.is-colour.selected {
+  background: linear-gradient(120deg, rgba(8,145,178,.10), rgba(192,38,211,.09) 50%, rgba(202,138,4,.12)), var(--field);
+}
+.printer-option.is-mono, .printer-option.is-mono:hover, .printer-option.is-mono.selected { background: #e4e7eb; }
+:root[data-theme="dark"] .printer-option.is-colour,
+:root[data-theme="dark"] .printer-option.is-colour:hover,
+:root[data-theme="dark"] .printer-option.is-colour.selected {
+  background: linear-gradient(120deg, rgba(8,145,178,.16), rgba(192,38,211,.14) 50%, rgba(202,138,4,.14)), var(--field);
+}
+:root[data-theme="dark"] .printer-option.is-mono,
+:root[data-theme="dark"] .printer-option.is-mono:hover,
+:root[data-theme="dark"] .printer-option.is-mono.selected { background: #070a10; }
+.printer-option.is-colour.selected, .printer-option.is-mono.selected { box-shadow: 0 0 0 2.5px var(--accent); }
+:root[data-theme="dark"] .chip.mono { background: #3f3f46; }
 .ptype {
   flex: none; display: grid; place-items: center; width: 44px; height: 44px;
   border-radius: 10px; background: var(--kind); color: #fff;
@@ -426,6 +442,14 @@ tr:last-child td { border-bottom: none; }
 
 .printer-tag { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; }
 .offline-note { color: var(--muted); font-size: 12px; }
+/* A printer that is jammed, out of paper, off... (from its own computer). */
+.pproblem { display: block; margin-top: 4px; font-size: 13px; font-weight: 600; color: var(--bad); }
+.pproblem::before { content: "\26A0\FE0E  "; }
+.printer-problems { max-width: 724px; width: calc(100% - 36px); box-sizing: border-box; margin: 10px auto 0; padding: 10px 14px; border-radius: 10px;
+  border: 1.5px solid var(--bad-line); background: var(--bad-bg); color: var(--bad-ink); font-size: 14px; }
+.printer-problems[hidden] { display: none; }
+.printer-problem-row strong { color: var(--bad); }
+.printer-problems .hint { margin: 4px 0 0; }
 tr.mine { background: var(--accent-soft); }
 .you-tag {
   display: inline-block; background: var(--accent); color: #fff;
@@ -763,3 +787,6 @@ body > .skiptranslate, iframe.skiptranslate, #goog-gt-tt, .goog-te-banner-frame 
 
 .alert-banners:empty { display: none; }
 #queueTable td { overflow-wrap: anywhere; }
+/* Printer tools on Printers & setup: closed unless someone opens them. */
+details.tools { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 8px; }
+details.tools summary { cursor: pointer; color: var(--muted); font-size: 13px; width: max-content; }
