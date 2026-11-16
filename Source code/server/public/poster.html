@@ -135,6 +135,14 @@
         <option value="trouble">&ldquo;Printer acting up?&rdquo; help sign (one A4 page)</option>
       </select>
     </div>
+    <div class="field" id="troubleLangBox" style="max-width:560px">
+      <label for="troubleLang">Language of the sign</label>
+      <select id="troubleLang">
+        <option value="en">English</option>
+        <option value="si">සිංහල (Sinhala)</option>
+        <option value="ta">தமிழ் (Tamil)</option>
+      </select>
+    </div>
     <div class="row" style="max-width:560px;flex-wrap:wrap">
       <button id="printPoster" type="button" style="flex:0 0 auto">Print this sign</button>
       <select id="addressPick" style="display:none;flex:1 1 260px;min-width:0" aria-label="Address shown on the sign"></select>
@@ -144,24 +152,24 @@
 
   <div class="poster" id="poster">
     <div class="poster-brand">PRINTBRIDGE</div>
-    <h2>Print from your phone</h2>
-    <p class="tagline">No app. No account. Just scan.</p>
+    <h2 id="wHead">Print from your phone</h2>
+    <p class="tagline" id="wTag">No app. No account. Just scan.</p>
 
     <div class="qr" id="qrBox"></div>
 
-    <p class="scan">Point your camera here</p>
-    <p class="or">or type this into any browser</p>
+    <p class="scan" id="wScan">Point your camera here</p>
+    <p class="or" id="wOr">or type this into any browser</p>
     <p class="address" id="posterAddress">...</p>
     <p class="or" id="posterAltAddress" hidden style="font-size:14px;margin-top:6px"></p>
 
-    <ol class="steps">
+    <ol class="steps" id="wSteps">
       <li>Scan the code (or type the address).</li>
       <li>Type your name, once.</li>
       <li>Drop in the file or photo you want.</li>
       <li>Tap <strong>Print</strong> and come and collect it.</li>
     </ol>
 
-    <p class="foot">Works on any phone, tablet or laptop on the office Wi-Fi.</p>
+    <p class="foot" id="wFoot">Works on any phone, tablet or laptop on the office Wi-Fi.</p>
     <p class="foot" style="margin-top:4px">PrintBridge &middot; <span class="maker"><svg class="cup" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" style="vertical-align:-2px;margin-right:4px" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h12v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9z"/><path d="M16 10.5h1.5a2.5 2.5 0 0 1 0 5H16"/><path d="M8 3.5c-.6.8.6 1.7 0 2.5M11.5 3.5c-.6.8.6 1.7 0 2.5"/><path d="M3 21h14"/></svg>by @devnithdev</span></p>
   </div>
 
@@ -171,16 +179,16 @@
        printer instead of thinking PrintBridge is broken. -->
   <div class="poster trouble" id="trouble" hidden>
     <div class="poster-brand">PRINTBRIDGE</div>
-    <h2>Printer acting up?</h2>
-    <p class="tagline">It's almost always the printer, not PrintBridge.</p>
-    <ol class="steps">
+    <h2 id="tHead">Printer acting up?</h2>
+    <p class="tagline" id="tTag">Here is what to do.</p>
+    <ol class="steps" id="tSteps">
       <li><strong>Look at the printing page.</strong> A red note on a printer (&ldquo;Paper jam&rdquo;, &ldquo;Out of paper&rdquo;, &ldquo;Switched off&rdquo;) says what is wrong with it.</li>
       <li><strong>Check the printer itself:</strong> paper in the tray, no jammed sheet, covers shut, no blinking error light, switched on.</li>
       <li><strong>Waiting printouts are safe.</strong> They print once the printer is fixed. Anything stuck more than 30 minutes is cancelled by itself, so old pages don't come out hours later. You'll see &ldquo;send it again&rdquo;.</li>
       <li><strong>In a hurry?</strong> Print on another printer: pick a different one on the printing page.</li>
       <li><strong>Still stuck?</strong> Press <strong>Need help?</strong> on the printing page. It tells everyone with the page open.</li>
     </ol>
-    <p class="foot">Pages from different people never mix: each printer finishes one printout before starting the next.</p>
+    <p class="foot" id="tFoot">Pages from different people never mix: each printer finishes one printout before starting the next.</p>
   </div>
 
   <script src="/vendor/qrcode.js"></script>

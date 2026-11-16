@@ -75,6 +75,94 @@ function buildAddressList(where) {
   return list;
 }
 
+// The "Printer acting up?" sign in each language. The red notes on the printing
+// page are in English, so the English words stay in quotes to match them.
+const TROUBLE = {
+  si: {
+    head: "ප්‍රින්ටරයේ ගැටලුවක්ද?",
+    tag: "කළ යුත්තේ මෙයයි.",
+    steps: [
+      "<strong>මුද්‍රණ පිටුව බලන්න.</strong> ප්‍රින්ටරයක් අසල රතු සටහනක් (“Paper jam”, “Out of paper”, “Switched off”) තිබේ නම්, ඇති වරද කුමක්දැයි එයින් කියවේ.",
+      "<strong>ප්‍රින්ටරය ළඟින් පරීක්ෂා කරන්න:</strong> තැටියේ කඩදාසි තිබේද, කඩදාසි හිරවී නැද්ද, පියන් වසා ඇත්ද, දෝෂ එළියක් නොදැල්වෙනවාද, ප්‍රින්ටරය ක්‍රියාත්මකද.",
+      "<strong>රැඳී සිටින මුද්‍රණ ආරක්ෂිතයි.</strong> ප්‍රින්ටරය හදා ගත් පසු ඒවා මුද්‍රණය වේ. මිනිත්තු 30කට වඩා හිරවී ඇති ඒවා ඉබේම අවලංගු වන නිසා, පැරණි පිටු පැය ගණනකට පසු එළියට නොඑයි. එවිට “නැවත එවන්න” (send it again) යන පණිවිඩය පෙනේ.",
+      "<strong>හදිසිද?</strong> වෙනත් ප්‍රින්ටරයක මුද්‍රණය කරන්න: මුද්‍රණ පිටුවේ වෙනත් එකක් තෝරන්න.",
+      "<strong>තවමත් විසඳී නැද්ද?</strong> මුද්‍රණ පිටුවේ <strong>Need help?</strong> ඔබන්න. පිටුව විවෘතව ඇති සියල්ලන්ටම එය දැනුම් දෙයි."
+    ],
+    foot: "වෙනස් අයගේ පිටු කිසිවිටෙකත් මිශ්‍ර නොවේ: එක් ප්‍රින්ටරයක් එක් මුද්‍රණයක් අවසන් කළ පසුවය ඊළඟ එක ආරම්භ කරන්නේ."
+  },
+  ta: {
+    head: "பிரிண்டரில் பிரச்சினையா?",
+    tag: "செய்ய வேண்டியது இதுதான்.",
+    steps: [
+      "<strong>அச்சிடும் பக்கத்தைப் பாருங்கள்.</strong> ஒரு பிரிண்டருக்கு அருகில் சிவப்புக் குறிப்பு (“Paper jam”, “Out of paper”, “Switched off”) இருந்தால், அதுவே என்ன பிரச்சினை என்று சொல்லும்.",
+      "<strong>பிரிண்டரையே சோதியுங்கள்:</strong> தட்டில் காகிதம் உள்ளதா, காகிதம் சிக்கவில்லையா, மூடிகள் மூடப்பட்டுள்ளனவா, பிழை விளக்கு மின்னவில்லையா, பிரிண்டர் இயக்கத்தில் உள்ளதா.",
+      "<strong>காத்திருக்கும் அச்சுகள் பாதுகாப்பாக உள்ளன.</strong> பிரிண்டர் சரியானதும் அவை அச்சாகும். 30 நிமிடங்களுக்கு மேல் சிக்கியிருப்பவை தாமாகவே ரத்தாகும்; அதனால் பழைய பக்கங்கள் பல மணி நேரம் கழித்து வராது. அப்போது “மீண்டும் அனுப்புங்கள்” (send it again) என்ற செய்தி தெரியும்.",
+      "<strong>அவசரமா?</strong> வேறொரு பிரிண்டரில் அச்சிடுங்கள்: அச்சிடும் பக்கத்தில் வேறொன்றைத் தேர்ந்தெடுங்கள்.",
+      "<strong>இன்னும் சரியாகவில்லையா?</strong> அச்சிடும் பக்கத்தில் <strong>Need help?</strong> ஐ அழுத்துங்கள். அந்தப் பக்கத்தைத் திறந்து வைத்திருக்கும் அனைவருக்கும் அது தெரிவிக்கும்."
+    ],
+    foot: "வெவ்வேறு நபர்களின் பக்கங்கள் ஒருபோதும் கலக்காது: ஒவ்வொரு பிரிண்டரும் ஒரு அச்சை முடித்த பிறகுதான் அடுத்ததைத் தொடங்கும்."
+  }
+};
+const WALL = {
+  si: {
+    head: "ඔබේ දුරකථනයෙන් මුද්‍රණය කරන්න",
+    tag: "යෙදුමක් අවශ්‍ය නැත. ගිණුමක් අවශ්‍ය නැත. ස්කෑන් කරන්න පමණයි.",
+    scan: "ඔබේ කැමරාව මෙතැනට යොමු කරන්න",
+    or: "නැතහොත් ඕනෑම බ්‍රවුසරයක මෙය ටයිප් කරන්න",
+    steps: [
+      "කේතය ස්කෑන් කරන්න (නැතහොත් ලිපිනය ටයිප් කරන්න).",
+      "ඔබේ නම එක් වරක් ටයිප් කරන්න.",
+      "ඔබට අවශ්‍ය ගොනුව හෝ ඡායාරූපය දමන්න.",
+      "<strong>Print</strong> ඔබා, ගොස් එය ලබා ගන්න."
+    ],
+    foot: "කාර්යාලයේ Wi-Fi හි ඇති ඕනෑම දුරකථනයක, ටැබ්ලටයක හෝ ලැප්ටොපයක ක්‍රියා කරයි."
+  },
+  ta: {
+    head: "உங்கள் தொலைபேசியிலிருந்து அச்சிடுங்கள்",
+    tag: "செயலி வேண்டாம். கணக்கு வேண்டாம். ஸ்கேன் செய்தால் போதும்.",
+    scan: "உங்கள் கேமராவை இங்கே காட்டுங்கள்",
+    or: "அல்லது ஏதேனும் உலாவியில் இதைத் தட்டச்சு செய்யுங்கள்",
+    steps: [
+      "குறியீட்டை ஸ்கேன் செய்யுங்கள் (அல்லது முகவரியைத் தட்டச்சு செய்யுங்கள்).",
+      "உங்கள் பெயரை ஒருமுறை தட்டச்சு செய்யுங்கள்.",
+      "உங்களுக்கு வேண்டிய கோப்பு அல்லது புகைப்படத்தைச் சேர்க்கவும்.",
+      "<strong>Print</strong> ஐ அழுத்தி, வந்து எடுத்துக்கொள்ளுங்கள்."
+    ],
+    foot: "அலுவலக Wi-Fi இல் உள்ள எந்த தொலைபேசி, டேப்லெட் அல்லது லேப்டாப்பிலும் வேலை செய்யும்."
+  }
+};
+const SMALL = {
+  en: { label: "Scan to print", or: "or" },
+  si: { label: "මුද්‍රණයට ස්කෑන් කරන්න", or: "නැතහොත්" },
+  ta: { label: "அச்சிட ஸ்கேன் செய்யுங்கள்", or: "அல்லது" }
+};
+
+// One language for every sign. English is whatever the page itself says, kept
+// the first time so it can be put back.
+const ENGLISH = {};
+function fillSign(prefix, text, ids) {
+  for (const k in ids) {
+    const key = prefix + k;
+    if (!(key in ENGLISH)) ENGLISH[key] = $(ids[k]).innerHTML;
+    $(ids[k]).innerHTML = text ? text[k] : ENGLISH[key];
+  }
+  if (!("steps" + prefix in ENGLISH)) ENGLISH["steps" + prefix] = $(prefix + "Steps").innerHTML;
+  $(prefix + "Steps").innerHTML = text ? text.steps.map((s) => "<li>" + s + "</li>").join("") : ENGLISH["steps" + prefix];
+}
+
+function signLanguage() { return $("troubleLang").value; }
+
+function showLanguage() {
+  const code = signLanguage();
+  fillSign("t", TROUBLE[code], { head: "tHead", tag: "tTag", foot: "tFoot" });
+  fillSign("w", WALL[code], { head: "wHead", tag: "wTag", scan: "wScan", or: "wOr", foot: "wFoot" });
+  $("trouble").lang = code;
+  $("poster").lang = code;
+  showSize();
+  if (current) useAddress(current);
+}
+$("troubleLang").addEventListener("change", showLanguage);
+
 function showSize() {
   const size = $("sizePick").value;
   $("poster").hidden = size !== "wall";
@@ -87,7 +175,8 @@ function showSize() {
   if (size === "wall" || size === "trouble" || !current) return;
   const label = document.createElement("div");
   label.className = "label";
-  label.innerHTML = '<span class="l-brand">PRINTBRIDGE</span><p class="l-title">Scan to print</p>' + qrSvg(current.url) + '<p class="l-addr"></p>';
+  label.innerHTML = '<span class="l-brand">PRINTBRIDGE</span><p class="l-title"></p>' + qrSvg(current.url) + '<p class="l-addr"></p>';
+  label.querySelector(".l-title").textContent = SMALL[signLanguage()].label;
   label.querySelector(".l-addr").textContent = current.url.replace(/^https?:\/\//, "");
   for (let i = 0; i < SHEETS[size]; i++) box.appendChild(label.cloneNode(true));
 }
@@ -103,7 +192,7 @@ function useAddress(address) {
   const alt = $("posterAltAddress");
   const name = addresses.find((a) => a.url === nameUrl);
   if (name && name.url !== address.url) {
-    alt.textContent = "or " + name.url.replace(/^https?:\/\//, "");
+    alt.textContent = SMALL[signLanguage()].or + " " + name.url.replace(/^https?:\/\//, "");
     alt.hidden = false;
   } else {
     alt.hidden = true;
