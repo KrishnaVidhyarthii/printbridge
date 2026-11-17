@@ -75,6 +75,7 @@ function checkVersionEverywhere(v) {
     ["agent/agent.js", /const VERSION = "([^"]+)"/],
     ["installer/OfficePrinting.nsi", /!define VERSION "([^"]+)"/],
     ["desktop/tools/relabel-exe/relabel-exe.js", /FileVersion: "([^"]+)"/],
+    ["../../printbridge-updates/index.html", /"softwareVersion":\s*"([^"]+)"/],
   ];
   const wrong = [];
   for (const [file, re] of places) {
@@ -165,6 +166,7 @@ function bump(next) {
     ["desktop/package-lock.json", new RegExp('("name": "[^"]+",\\s*"version": )"' + esc(v) + '"', "g"), '$1"' + next + '"'],
     // The download site, when its copy sits beside this one (skipped otherwise).
     ["../../printbridge-updates/index.html", new RegExp('"softwareVersion": "[^"]*"'), '"softwareVersion": "' + next + '"'],
+    ["../../printbridge-updates/sitemap.xml", /<lastmod>[^<]*<\/lastmod>/g, "<lastmod>" + new Date().toISOString().slice(0, 10) + "</lastmod>"],
   ];
   for (const [file, re, to] of edits) {
     const full = path.join(SRC, file);
@@ -174,6 +176,11 @@ function bump(next) {
     re.lastIndex = 0;
     fs.writeFileSync(full, text.replace(re, to));
     say("  " + file);
+  }
+  const siteLang = path.join(SRC, "../../printbridge-updates/lang.js");
+  if (fs.existsSync(path.dirname(siteLang))) {
+    fs.copyFileSync(path.join(SRC, "server/public/lang.js"), siteLang);
+    say("  ../../printbridge-updates/lang.js");
   }
   say("Version is now " + next + ". Build (BUILD-ALL.command), test it on one computer, then publish (PUBLISH-UPDATE.command).");
 }

@@ -12,6 +12,9 @@
     if (t) root.setAttribute("data-theme", t); else root.removeAttribute("data-theme");
     var dark = t ? t === "dark" : !!(media && media.matches);
     if (dark) root.setAttribute("data-dark", ""); else root.removeAttribute("data-dark");
+    var label = dark ? "Switch to light mode" : "Switch to dark mode";
+    $("theme").setAttribute("aria-label", label);
+    $("theme").title = label;
   }
   applyTheme(store("pb-theme"));
   if (media && media.addEventListener) media.addEventListener("change", function () { applyTheme(store("pb-theme")); });

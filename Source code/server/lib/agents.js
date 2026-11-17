@@ -40,6 +40,19 @@ function sendToAgent(agentId, message) {
   return true;
 }
 
+function disconnectAgent(agentId) {
+  const socket = socketsByAgentId.get(agentId);
+  if (socket) {
+    socketsByAgentId.delete(agentId);
+    agentIdBySocket.delete(socket);
+    try { socket.close(4003, "Removed"); } catch (err) { /* ignore */ }
+  }
+  for (const id of [...health.keys()]) {
+    if (id.startsWith(agentId + "::")) health.delete(id);
+  }
+  events.emit("printers-changed");
+}
+
 // Save (or update) what an agent told us about its printers.
 function rememberPrinters(agent, printers) {
   const seen = new Set();
@@ -154,16 +167,21 @@ const health = new Map(); // printer id -> { problem, waiting, at }
 const HEALTH_FRESH_MS = 3 * 60 * 1000;
 
 function rememberHealth(agentId, list) {
+  let changed = false;
   for (const item of list) {
     if (!item || typeof item !== "object") continue;
     const id = printerId(agentId, String(item.name || "").trim());
     if (!db.printers.some((p) => p.id === id)) continue;
+    const problem = String(item.problem || "").slice(0, 120);
+    const prev = health.get(id);
+    if ((prev ? prev.problem : "") !== problem) changed = true;
     health.set(id, {
-      problem: String(item.problem || "").slice(0, 120),
+      problem,
       waiting: Math.max(0, parseInt(item.waiting, 10) || 0),
       at: Date.now(),
     });
   }
+  if (changed) events.emit("health-changed");
 }
 
 // "" when fine (or nothing is known); else a short reason like "Paper jam".
@@ -378,6 +396,7 @@ module.exports = {
   handleConnection,
   startHeartbeat,
   sendToAgent,
+  disconnectAgent,
   isOnline,
   listPrinters,
   problemOf,

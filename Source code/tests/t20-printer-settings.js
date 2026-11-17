@@ -24,7 +24,7 @@ const managed = async () => JSON.parse((await request("GET", "/api/manage/printe
     silent: true,
     env: Object.assign({}, process.env, { NODE_PATH, PORT: String(PORT), PRINT_DATA_DIR: dir, PRINT_UPLOAD_DIR: path.join(dir, "up"), NO_DISCOVERY: "1" }),
   });
-  let ws;
+  let ws, sseReq;
   try {
     for (let i = 0; i < 50 && !(await request("GET", "/api/office-printing")); i++) await sleep(200);
     const added = JSON.parse((await request("POST", "/api/manage/computers", { name: "Test" })).body);
@@ -48,20 +48,60 @@ const managed = async () => JSON.parse((await request("GET", "/api/manage/printe
     // A printer's computer says it is jammed: everyone sees it, then it clears.
     const got = [];
     ws.on("message", (m) => got.push(JSON.parse(m)));
+    const sseQueues = [];
+    let sseBuf = "";
+    sseReq = http.get("http://127.0.0.1:" + PORT + "/api/stream", (res) => {
+      res.setEncoding("utf8");
+      res.on("data", (chunk) => {
+        sseBuf += chunk;
+        let idx;
+        while ((idx = sseBuf.indexOf("\n\n")) !== -1) {
+          const frame = sseBuf.slice(0, idx);
+          sseBuf = sseBuf.slice(idx + 2);
+          const dataLine = frame.split("\n").find((l) => l.startsWith("data: "));
+          if (frame.includes("event: queue\n") && dataLine) sseQueues.push(JSON.parse(dataLine.slice(6)));
+        }
+      });
+    });
+    sseReq.on("error", () => {});
+    const waitFor = async (fn) => {
+      for (let i = 0; i < 40; i++) { if (fn()) return true; await sleep(50); }
+      return false;
+    };
+    await waitFor(() => sseQueues.length >= 1);
+
+    const form = new FormData();
+    form.append("printerId", p.id);
+    form.append("file", new Blob(["%PDF-1.4\n%%EOF\n"], { type: "application/pdf" }), "a.pdf");
+    const sent = await fetch("http://127.0.0.1:" + PORT + "/api/print", { method: "POST", body: form });
+    ok(sent.ok, "a job waits on the printer");
+    await waitFor(() => sseQueues.some((q) => q.length === 1));
+
+    const beforeJam = sseQueues.length;
     ws.send(JSON.stringify({ type: "health", printers: [{ name: "Office", problem: "Paper jam", waiting: 2 }, { name: "Not mine", problem: "x" }, null] }));
     await sleep(300);
     const listed = () => request("GET", "/api/printers").then((r) => JSON.parse(r.body).find((x) => x.name === "Office"));
     ok((await listed()).problem === "Paper jam", "a jam reported by the printer's computer shows on the print page");
+    ok(await waitFor(() => sseQueues.slice(beforeJam).some((q) => q.some((j) => j.printerProblem === "Paper jam"))), "live queue update shows the jam right away");
+    const beforeClear = sseQueues.length;
     ws.send(JSON.stringify({ type: "health", printers: [{ name: "Office", problem: "", waiting: 0 }] }));
     await sleep(300);
     ok((await listed()).problem === "", "and goes away once it is fixed");
+    ok(await waitFor(() => sseQueues.slice(beforeClear).some((q) => q.length && q.every((j) => j.printerProblem === ""))), "clearing the jam broadcasts to the live queue too");
 
     // Clearing the queue cancels what waits for it and tells its computer.
     const cleared = JSON.parse((await request("POST", "/api/manage/printers/" + encodeURIComponent(p.id) + "/clear-queue")).body);
     await sleep(300);
-    ok(cleared.ok && cleared.computerOnline === true, "clearing a queue answers ok");
+    ok(cleared.ok && cleared.cancelled === 1 && cleared.computerOnline === true, "clearing a queue answers ok");
     ok(got.some((m) => m.type === "clear-queue" && m.printer === "Office"), "the printer's computer is told to empty its own queue");
+
+    // Removing a computer from Manage closes its live connection right away.
+    const closed = new Promise((resolve) => ws.once("close", (code) => resolve(code)));
+    const removed = await request("DELETE", "/api/manage/computers/" + encodeURIComponent(added.computer.id));
+    const closeCode = await Promise.race([closed, sleep(1500).then(() => null)]);
+    ok(removed.status === 200 && closeCode === 4003, "removing a computer disconnects its agent immediately");
   } finally {
+    if (sseReq) sseReq.destroy();
     if (ws) ws.terminate();
     web.kill();
     fs.rmSync(dir, { recursive: true, force: true });

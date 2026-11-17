@@ -210,15 +210,15 @@ app.get("/api/printers", (req, res) => {
 async function readyToPrint(file) {
   if (convert.isPdf(file.originalname)) return file.path;
   if (!convert.needsConversion(file.originalname)) {
-    fs.unlink(file.path, () => {});
+    try { fs.unlinkSync(file.path); } catch (e) {}
     throw new Error("That kind of file can't be printed.");
   }
   try {
     const pdfPath = await convert.convertToPdf(file.path);
-    fs.unlink(file.path, () => {});
+    try { fs.unlinkSync(file.path); } catch (e) {}
     return pdfPath;
   } catch (err) {
-    fs.unlink(file.path, () => {});
+    try { fs.unlinkSync(file.path); } catch (e) {}
     throw err;
   }
 }
@@ -654,6 +654,7 @@ function removeComputer(id) {
     }
   }
   save();
+  agents.disconnectAgent(agent.id);
   jobs.broadcastQueue();
   return true;
 }

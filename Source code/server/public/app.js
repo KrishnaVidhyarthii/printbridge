@@ -928,7 +928,6 @@ function closePageView() {
 function renderPageView() {
   const entry = activeEntry();
   if (!entry || !entry.pdf || !viewPage) return;
-  const shown = Math.min(entry.pageCount, MAX_THUMBS);
   $("pvTitle").textContent = "Page " + viewPage + " of " + entry.pageCount;
   const size = entry.pageSizes[viewPage] || entry.pageSizes[1] || [595, 842];
   const place = placeOnPaper(size[0], size[1]);
@@ -958,7 +957,7 @@ function renderPageView() {
   choose.innerHTML = chosen ? "&#10003; Chosen" : "Choose this page";
   choose.hidden = entry.pageCount < 2;
   $("pvPrev").disabled = viewPage <= 1;
-  $("pvNext").disabled = viewPage >= shown;
+  $("pvNext").disabled = viewPage >= entry.pageCount;
 }
 
 function setupPageView() {
@@ -1665,7 +1664,7 @@ function escapeHtml(value) {
 // and focus returns to what opened it when it closes.
 (function watchDialogs() {
   const overlays = [...document.querySelectorAll(".modal-overlay")];
-  const behind = [document.querySelector("header"), document.querySelector("main"), $("langPick"), $("alertBanners")].filter(Boolean);
+  const behind = [document.querySelector("header"), document.querySelector("main"), $("langPick"), $("alertBanners"), $("printerProblems")].filter(Boolean);
   const openers = new Map();
   const sync = () => {
     const anyOpen = overlays.some((o) => !o.hidden);

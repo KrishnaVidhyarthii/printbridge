@@ -120,7 +120,7 @@ osascript -e 'do shell script "\"$APP_BIN\" setup-wizard && \"$APP_BIN\" restart
 EOF
 
 cat > "$MENU_DIR/Read Me.txt" <<EOF
-PrintBridge - print from any computer to any printer in the office.
+PrintBridge - print from any phone or computer to any printer in the office.
 
 Open PrintBridge         Opens the printing page in your browser.
 Check PrintBridge        Says whether everything on this computer is working.

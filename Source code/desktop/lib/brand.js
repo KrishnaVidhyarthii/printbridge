@@ -20,7 +20,7 @@ const HANDLE = "@devnithdev";
 
 module.exports = {
   NAME: "PrintBridge",
-  TAGLINE: "Print from any computer to any printer in the office.",
+  TAGLINE: "Print from any phone or computer to any printer in the office.",
   COMPANY: "Devnith AE",
   MAKER: "Devnith AE",
   // Plain-text form (logs, consoles, file details).

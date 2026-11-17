@@ -247,6 +247,7 @@ button.ghost {
   background: transparent; color: var(--muted);
   border: 1px solid var(--line); padding: 5px 12px; font-size: 13px; font-weight: 450;
 }
+button.ghost:hover { background: var(--bg); color: var(--ink); border-color: var(--accent); }
 button:disabled { opacity: .5; cursor: not-allowed; }
 /* Printers & setup: Show is green, Hide is amber, so they look different. */
 button.show-btn { background: var(--ok-bg); color: var(--ok-ink); border-color: var(--ok-line); font-weight: 550; }
@@ -593,6 +594,7 @@ button.paper:hover { background: #fff; border-color: var(--accent); }
 }
 .tick:hover { background: #fff; border-color: var(--accent); }
 .thumb.chosen .tick { background: var(--accent); border-color: var(--accent); }
+.thumb.chosen .tick:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
 .thumb-label { text-align: center; font-size: 12px; color: var(--muted); margin-top: 6px; }
 .thumbs-more { grid-column: 1 / -1; font-size: 13px; color: var(--muted); }
 .preview-hint { font-size: 13px; color: var(--muted); margin: 16px 0 0; }
@@ -629,6 +631,7 @@ button.linklike:hover { background: none; color: var(--accent-text); filter: bri
 .pv-foot { display: flex; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--line); }
 .pv-choose { flex: 1; }
 .pv-choose.on { background: var(--brand-green-strong); }
+.pv-choose.on:hover { background: var(--brand-green-strong); filter: brightness(1.08); }
 .pv-choose[hidden] { display: none; }
 
 @media (max-width: 760px) {
@@ -728,6 +731,8 @@ button.linklike:hover { background: none; color: var(--accent-text); filter: bri
    letter). The badge already says PrintBridge, so "Print" goes first. */
 @media (max-width: 480px) {
   header.one-line h1 { display: none; }
+  header:not(.one-line) .brand-mark { display: none; }
+  header a.button { padding: 7px 12px; font-size: 13px; }
   /* "Help" instead of "Need help?" leaves room for the person's name. */
   header.one-line .help-long { display: none; }
   header.one-line .help-short { display: inline; }
@@ -767,7 +772,7 @@ button.linklike:hover { background: none; color: var(--accent-text); filter: bri
 :root[data-theme="dark"] .theme-btn .moon { display: none; }
 
 /* the printed page and the paper previews are always white */
-.paper, .poster { color-scheme: light; }
+.paper, .poster, .labels { color-scheme: light; }
 
 @media print { .theme-btn { display: none !important; } }
 

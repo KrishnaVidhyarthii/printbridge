@@ -47,6 +47,7 @@ const CSS = `
 .theme-btn .sun { display:none; }
 :root[data-theme="dark"] .theme-btn .sun { display:block; }
 :root[data-theme="dark"] .theme-btn .moon { display:none; }
+@media (max-width: 640px) { body { padding-top:64px !important; } }
 @media print { .theme-btn { display:none !important; } }
 `;
 

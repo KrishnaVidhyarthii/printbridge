@@ -48,7 +48,7 @@ SetCompressorDictSize 64
                                    ; this is what lets Setup always install itself over an older
                                    ; version, whatever brand name that version used, as an update)
 !define BRAND "PrintBridge"        ; name people see: Setup, shortcuts, Settings > Apps
-!define TAGLINE "Print from any computer to any printer in the office."
+!define TAGLINE "Print from any phone or computer to any printer in the office."
 !define COMPANY "Devnith AE"
 !define CREDIT "${U+2615} by @devnithdev"
 !define VERSION "4.2.15"

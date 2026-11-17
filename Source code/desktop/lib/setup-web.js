@@ -80,12 +80,14 @@ label.row input[type=radio], label.row input[type=checkbox] { margin-top:3px; }
 .row .d { color:var(--soft); font-size:14px; margin-top:2px; }
 label.field { display:block; font-weight:600; font-size:14px; margin:14px 0 6px; }
 input[type=text] { width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px; background:var(--field); color:var(--ink); font-size:15px; }
+input[type=text]:focus { outline:2px solid var(--brand-text); outline-offset:1px; border-color:var(--brand-text); }
 input::placeholder { color:var(--soft); opacity:1; }
 .hint { color:var(--soft); font-size:13px; margin-top:6px; }
 .actions { display:flex; justify-content:space-between; align-items:center; margin-top:24px; }
 button, .btn { background:var(--brand); color:#fff; border:none; border-radius:8px; padding:11px 20px; font-size:15px; font-weight:600; cursor:pointer; text-decoration:none; display:inline-block; }
 button:hover, .btn:hover { background:var(--brand-dark); }
 button.secondary { background:transparent; color:var(--brand-text); padding:11px 8px; }
+button.secondary:hover { background:transparent; text-decoration:underline; }
 form.inline { display:inline; }
 a.back { color:var(--soft); font-size:14px; text-decoration:none; }
 ul.summary { list-style:none; margin:0 0 20px; padding:0; }

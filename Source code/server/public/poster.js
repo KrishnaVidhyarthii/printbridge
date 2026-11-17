@@ -32,6 +32,7 @@ const PRINT_TEXT = { wall: "Print this sign", card: "Print the desk cards", stic
       "This computer doesn't seem to be on a network right now, so there's no " +
       "address other devices could use. Connect it to the office Wi-Fi and reload.";
     $("posterAddress").textContent = "(not on a network)";
+    current = { url: location.origin, label: location.origin };
     return;
   }
 
@@ -175,7 +176,7 @@ function showSize() {
   if (size === "wall" || size === "trouble" || !current) return;
   const label = document.createElement("div");
   label.className = "label";
-  label.innerHTML = '<span class="l-brand">PRINTBRIDGE</span><p class="l-title"></p>' + qrSvg(current.url) + '<p class="l-addr"></p>';
+  label.innerHTML = '<span class="l-brand notranslate" translate="no">PRINTBRIDGE</span><p class="l-title"></p>' + qrSvg(current.url) + '<p class="l-addr"></p>';
   label.querySelector(".l-title").textContent = SMALL[signLanguage()].label;
   label.querySelector(".l-addr").textContent = current.url.replace(/^https?:\/\//, "");
   for (let i = 0; i < SHEETS[size]; i++) box.appendChild(label.cloneNode(true));

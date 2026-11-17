@@ -503,6 +503,7 @@ agents.events.on("agent-offline", handleAgentOffline);
 // time, or "waiting for the printer") even when no job itself changed.
 agents.events.on("agent-online", broadcastQueue);
 agents.events.on("agent-offline", broadcastQueue);
+agents.events.on("health-changed", broadcastQueue);
 
 // "Clear this printer's queue" (Printers & setup): nothing still waiting for
 // that printer is printed, and its computer empties the printer's own queue.
