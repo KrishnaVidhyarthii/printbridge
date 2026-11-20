@@ -104,7 +104,8 @@ const managed = async () => JSON.parse((await request("GET", "/api/manage/printe
     if (sseReq) sseReq.destroy();
     if (ws) ws.terminate();
     web.kill();
-    fs.rmSync(dir, { recursive: true, force: true });
+    // The website may still be saving as it stops, so retry rather than fail the checks.
+    fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
   console.log(n + " checks passed");
 })().catch((err) => { console.error(err); process.exit(1); });
