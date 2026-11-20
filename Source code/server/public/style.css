@@ -795,3 +795,32 @@ body > .skiptranslate, iframe.skiptranslate, #goog-gt-tt, .goog-te-banner-frame 
 /* Printer tools on Printers & setup: closed unless someone opens them. */
 details.tools { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 8px; }
 details.tools summary { cursor: pointer; color: var(--muted); font-size: 13px; width: max-content; }
+
+/* --- the bucket, and the "printing in 7 seconds" notice ------------------ */
+
+.bucket-print { margin-top: 12px; }
+.foot-row { display: flex; gap: 10px; }
+.foot-row .big-print { flex: 1; }
+.foot-row .bucket-add { flex: 0 0 auto; border-radius: 11px; padding: 0 18px; }
+.foot-row .bucket-add[hidden] { display: none; }
+
+.countdown-box { max-width: 420px; }
+.countdown-box h2 { margin: 0 0 6px; font-size: 20px; }
+.countdown-what { margin: 0 0 14px; color: var(--muted); word-break: break-word; }
+.countdown-bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; margin-bottom: 16px; }
+.countdown-bar div { height: 100%; width: 100%; background: var(--accent); transform-origin: left; }
+.countdown-bar.run div { animation: countdown-shrink 7s linear forwards; }
+@keyframes countdown-shrink { to { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) { .countdown-bar.run div { animation: none; } }
+.countdown-row { display: flex; gap: 10px; margin-bottom: 10px; }
+.countdown-row button { flex: 1; font-size: 17px; padding: 14px; border-radius: 11px; }
+
+/* --- what's new ---------------------------------------------------------- */
+
+.whatsnew-box { max-width: 460px; }
+.whatsnew-box h2 { margin: 4px 0 10px; font-size: 20px; }
+.whatsnew-langs { display: flex; gap: 6px; flex-wrap: wrap; }
+.whatsnew-langs button { padding: 6px 12px; font-size: 14px; }
+.whatsnew-langs button[aria-pressed=true] { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
+.whatsnew-list { margin: 0 0 18px; padding-left: 20px; line-height: 1.5; }
+.whatsnew-list li { margin-bottom: 8px; }

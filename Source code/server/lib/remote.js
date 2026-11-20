@@ -492,6 +492,22 @@ function reject(relayId) {
   report(relayId, "rejected", "", false).catch(() => {});
 }
 
+// A printout nobody approved within an hour is thrown away, like everything
+// else that waits that long.
+const MAX_WAIT_MS = 60 * 60 * 1000;
+function expireOld(now = Date.now()) {
+  if (!state) return; // printing from anywhere not started
+  const old = state.pending.filter((e) => (e.at || 0) < now - MAX_WAIT_MS);
+  if (!old.length) return;
+  state.pending = state.pending.filter((e) => !old.includes(e));
+  for (const entry of old) {
+    fs.unlink(entry.filePath, () => {});
+    updateLog(entry.relayId, { result: "expired" });
+    report(entry.relayId, "failed", "Nobody approved it within an hour, so it wasn't printed. Send it again.", false).catch(() => {});
+  }
+  save();
+}
+
 function start(options) {
   deps = options;
   FILE = options.file;
@@ -511,4 +527,4 @@ function pendingFiles() {
   return state.pending.map((e) => path.basename(e.filePath));
 }
 
-module.exports = { pendingFiles, isLocked, unlockSettings, lockSettings, start, stop, poll, status, connect, disconnect, addPerson, updatePerson, newCodeFor, removePerson, approve, reject, hashCode, newCode };
+module.exports = { expireOld, pendingFiles, isLocked, unlockSettings, lockSettings, start, stop, poll, status, connect, disconnect, addPerson, updatePerson, newCodeFor, removePerson, approve, reject, hashCode, newCode };

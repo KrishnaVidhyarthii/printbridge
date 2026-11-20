@@ -8,14 +8,17 @@
 // can see it.
 //
 // Held files live in memory: if the website restarts, anything still on a
-// "Print this?" screen has to be chosen again. Nobody waits more than a
-// few hours, so anything older is deleted.
+// "Print this?" screen (or in a bucket) has to be chosen again. Nothing is
+// held for more than an hour: anything older is deleted.
+//
+// The bucket: a person can keep files here to print later, all at once. A
+// bucket file is a held file marked with the device that put it there.
 
 const fs = require("fs");
 const crypto = require("crypto");
 
-const MAX_AGE_MS = 3 * 60 * 60 * 1000;
-const held = new Map(); // id -> { id, storedPath, originalName, size, createdAt, source }
+const MAX_AGE_MS = 60 * 60 * 1000;
+const held = new Map(); // id -> { id, storedPath, originalName, size, createdAt, source, bucketOf }
 
 function create({ storedPath, originalName, size, source }) {
   const id = crypto.randomBytes(18).toString("hex");
@@ -55,6 +58,20 @@ function discard(id) {
   return true;
 }
 
+// false when it is gone, or already in someone else's bucket.
+function addToBucket(id, deviceId) {
+  const entry = get(id);
+  if (!entry || (entry.bucketOf && entry.bucketOf !== deviceId)) return false;
+  entry.bucketOf = deviceId;
+  return true;
+}
+
+function bucketFor(deviceId) {
+  return [...held.values()]
+    .filter((e) => e.bucketOf === deviceId && fs.existsSync(e.storedPath))
+    .sort((a, b) => a.createdAt - b.createdAt);
+}
+
 function sweep() {
   const cutoff = Date.now() - MAX_AGE_MS;
   for (const entry of [...held.values()]) {
@@ -62,4 +79,4 @@ function sweep() {
   }
 }
 
-module.exports = { create, get, take, discard, sweep };
+module.exports = { create, get, take, discard, sweep, addToBucket, bucketFor, MAX_AGE_MS };

@@ -50,6 +50,14 @@
              accept=".pdf,.doc,.docx,.odt,.rtf,.txt,.csv,.xls,.xlsx,.xlsm,.ods,.ppt,.pptx,.odp,.png,.jpg,.jpeg,.gif,.bmp,.tif,.tiff,.webp,image/*">
     </div>
 
+    <!-- Files kept to print later, all together. Only this device sees them. -->
+    <div class="card" id="bucketCard" hidden>
+      <h2>Your bucket <span class="h2-note" id="bucketNote"></span></h2>
+      <div class="file-list" id="bucketList"></div>
+      <button class="big-print bucket-print" id="bucketPrint" type="button">Print bucket</button>
+      <p class="hint">Only you see these. Each file is thrown away an hour after you added it.</p>
+    </div>
+
     <!-- The how-to video. YouTube is only loaded when tapped, to save data. -->
     <div class="howto" id="howto">
       <button type="button" class="howto-btn" onclick="var v='Cx2plyjPf7w';try{v={si:'sP1R5dWC5Hw',ta:'5sw9WdwODrY'}[localStorage.getItem('printbridge-language')]||v}catch(e){}this.parentNode.innerHTML='<iframe src=&quot;https://www.youtube-nocookie.com/embed/'+v+'?autoplay=1&amp;rel=0&quot; title=&quot;PrintBridge: the full guide&quot; allow=&quot;autoplay; encrypted-media; picture-in-picture&quot; allowfullscreen></iframe>'">
@@ -146,10 +154,43 @@
         </section>
       </div>
 
-      <div class="modal-foot">
+      <div class="modal-foot foot-row">
+        <button class="secondary bucket-add" id="bucketButton" type="button">Add to bucket</button>
         <button class="big-print" id="printButton" type="button">Print</button>
       </div>
       <div id="printMessage" class="modal-message" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <!-- Print pressed: a few seconds to change your mind -->
+  <div id="sendCountdown" class="modal-overlay" hidden>
+    <div class="modal countdown-box" role="dialog" aria-modal="true" aria-labelledby="countdownTitle" aria-describedby="countdownWhat">
+      <div class="modal-body">
+        <h2 id="countdownTitle">Printing in <span id="countdownSecs">7</span> seconds</h2>
+        <p class="countdown-what" id="countdownWhat"></p>
+        <div class="countdown-bar" aria-hidden="true"><div id="countdownFill"></div></div>
+        <div class="countdown-row">
+          <button class="danger" id="countdownCancel" type="button">Cancel</button>
+          <button class="secondary" id="countdownEdit" type="button">Edit</button>
+        </div>
+        <button class="big-print" id="countdownNow" type="button">Print now</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- What's new: once per device after an update (whatsnew.js) -->
+  <div id="whatsNewModal" class="modal-overlay notranslate" translate="no" hidden>
+    <div class="modal whatsnew-box" role="dialog" aria-modal="true" aria-labelledby="whatsNewTitle">
+      <div class="modal-body">
+        <div class="whatsnew-langs" role="group" aria-label="Language">
+          <button type="button" class="secondary" data-lang="en">English</button>
+          <button type="button" class="secondary" data-lang="si">සිංහල</button>
+          <button type="button" class="secondary" data-lang="ta">தமிழ்</button>
+        </div>
+        <h2 id="whatsNewTitle">What's new</h2>
+        <ul class="whatsnew-list" id="whatsNewList"></ul>
+        <button class="big-print" id="whatsNewOk" type="button">Got it</button>
+      </div>
     </div>
   </div>
 
@@ -210,6 +251,7 @@
   </div>
 
   <script src="/vendor/pdfjs/pdf.min.js"></script>
+  <script src="/whatsnew.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>

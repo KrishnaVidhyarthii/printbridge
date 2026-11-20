@@ -88,6 +88,7 @@ app.get("/api/hello", (req, res) => {
     printers: agents.listPrinters(),
     openHelp: help.listOpen(),
     maxUploadMb: MAX_UPLOAD_MB,
+    version: VERSION,
   });
 });
 
@@ -230,6 +231,8 @@ function publicUpload(entry) {
     size: entry.size,
     source: entry.source,
     fileUrl: "/api/uploads/" + entry.id + "/file",
+    // How long until it is thrown away; not a clock time, as the phone's clock may differ.
+    expiresInMs: Math.max(0, entry.createdAt + held.MAX_AGE_MS - Date.now()),
   };
 }
 
@@ -293,10 +296,33 @@ app.get("/api/uploads/:id/file", (req, res) => {
   res.sendFile(entry.storedPath);
 });
 
-// The person closed the "Print this?" screen without printing.
+// The person closed the "Print this?" screen without printing, or took a
+// file out of their bucket. Someone else's bucket is left alone.
 app.delete("/api/uploads/:id", (req, res) => {
+  const entry = held.get(req.params.id);
+  if (entry && entry.bucketOf && entry.bucketOf !== req.deviceId) {
+    res.status(404).json({ error: "That isn't in your bucket." });
+    return;
+  }
   held.discard(req.params.id);
   res.json({ ok: true });
+});
+
+// The bucket: files this device keeps to print later, all together. Printing
+// them takes them out (held.take), and the queue goes by when Print was
+// pressed, not when a file was added here.
+app.get("/api/bucket", (req, res) => {
+  res.json(held.bucketFor(req.deviceId).map(publicUpload));
+});
+
+app.post("/api/bucket", (req, res) => {
+  const ids = Array.isArray(req.body && req.body.uploadIds) ? req.body.uploadIds.slice(0, 100) : [];
+  const added = ids.filter((id) => held.addToBucket(id, req.deviceId)).length;
+  if (!added) {
+    res.status(404).json({ error: "Those files have expired. Choose them again." });
+    return;
+  }
+  res.json({ ok: true, added });
 });
 
 // Step 2: print. Takes either a held upload (uploadId) or, as before, the
@@ -305,6 +331,7 @@ app.post("/api/print", upload.single("file"), handleAsync(async (req, res) => {
   let fromHeld = null;
   if (!req.file) {
     fromHeld = req.body && req.body.uploadId ? held.get(req.body.uploadId) : null;
+    if (fromHeld && fromHeld.bucketOf && fromHeld.bucketOf !== req.deviceId) fromHeld = null;
     if (!fromHeld) {
       res.status(400).json({
         error: req.body && req.body.uploadId
@@ -893,7 +920,12 @@ agents.startHeartbeat(wss);
 setInterval(() => {
   jobs.sweepUploads(remote.pendingFiles());
 }, 60 * 60 * 1000);
-setInterval(() => held.sweep(), 10 * 60 * 1000);
+// Nothing waits more than an hour, whatever it is waiting for.
+setInterval(() => {
+  held.sweep();
+  jobs.expireOld();
+  remote.expireOld();
+}, 60 * 1000);
 
 server.listen(PORT, () => {
   const addresses = localAddresses();

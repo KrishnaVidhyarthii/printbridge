@@ -85,6 +85,10 @@ function checkVersionEverywhere(v) {
     if (m && m[1] !== v) wrong.push(file + " says " + m[1]);
   }
   if (wrong.length) stop("desktop/lib/version.js says " + v + ", but " + wrong.join(", ") + ".\nRun \"node publish-update.js bump " + v + "\", build again, then publish.");
+  // Every release tells people what changed, in English, Sinhala and Tamil (whatsnew.js).
+  const notes = fs.readFileSync(path.join(SRC, "server/public/whatsnew.js"), "utf8");
+  const entry = (notes.split('"' + v + '": {')[1] || "").split(/\n  "\d/)[0];
+  if (!["en:", "si:", "ta:"].every((k) => entry.includes(k))) stop("server/public/whatsnew.js has no \"What's new\" notes for " + v + " in English, Sinhala and Tamil.\nAdd them, build again, then publish.");
 }
 
 function publicKeysInBuild() {

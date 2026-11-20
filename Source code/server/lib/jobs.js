@@ -518,7 +518,19 @@ function clearPrinter(printer) {
   return n;
 }
 
+// Nothing waits more than an hour, for any reason (a printer switched off,
+// its computer gone...): it is taken off the queue and its file deleted.
+const MAX_WAIT_MS = 60 * 60 * 1000;
+function expireOld(now = Date.now()) {
+  for (const job of db.jobs.filter((j) => !FINISHED.has(j.status) && j.createdAt < now - MAX_WAIT_MS)) {
+    finish(job, "cancelled", job.sentAt
+      ? "Stopped after waiting over an hour. It had already been sent to " + (job.printerName || "the printer") + ", so it may still come out."
+      : "Not printed: it waited over an hour. Send it again if you still need it.");
+  }
+}
+
 module.exports = {
+  expireOld,
   clearPrinter,
   cleanOptions,
   clampOptions,

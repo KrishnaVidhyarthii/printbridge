@@ -46,6 +46,7 @@ jobs:
           node t18-bad-messages.js
           node t19-dialogs.js
           node t20-printer-settings.js
+          node t21-bucket-expiry.js
 
   windows:
     name: Windows installer

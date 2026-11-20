@@ -5,7 +5,7 @@
   let last = null;
   const RESULT = {
     printing: "Printing", done: "Printed", failed: "Didn't print", rejected: "Didn't print (refused)",
-    held: "Waiting for approval", received: "Received",
+    held: "Waiting for approval", received: "Received", expired: "Didn't print (not approved within an hour)",
   };
 
   function when(ms) {

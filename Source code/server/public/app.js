@@ -212,6 +212,7 @@ async function refreshAddress() {
     printers = hello.printers || [];
     renderPrinterProblems();
     maxUploadMb = hello.maxUploadMb || 50;
+    if (hello.version) setTimeout(() => showWhatsNew(hello.version), 600);
     for (const alert of hello.openHelp || []) showAlertBanner(alert, true);
   } catch (err) {
     setPageMessage(
@@ -225,6 +226,8 @@ async function refreshAddress() {
 
   await loadQueue().catch(() => {});
   listenForLiveUpdates();
+  loadBucket();
+  setInterval(loadBucket, 60000);
 
   // A printout from another program on a computer ("PrintBridge"
   // printer) opens the page with ?upload=<id>. Take it out of the address
@@ -322,6 +325,7 @@ if (window.pdfjsLib) {
 }
 
 function openPrintModalWith(files) {
+  if (countdown || sending) return;
   const tooBig = files.filter((f) => f.size > maxUploadMb * 1024 * 1024);
   const fitting = files.filter((f) => f.size <= maxUploadMb * 1024 * 1024);
 
@@ -350,15 +354,24 @@ async function openPrintModalWithUpload(id) {
     setPageMessage(err.message, "error");
     return;
   }
+  openHeldFiles([info], false);
+}
+
+// Files already on the website: a printout from another program, or the bucket.
+function openHeldFiles(list, inBucket) {
+  if (countdown || sending) return;
   discardPending();
-  const entry = newEntry({ name: info.fileName, size: info.size, file: null });
-  entry.uploadId = info.id;
-  entry.fileUrl = info.fileUrl;
-  entry.status = "ready";
-  entry.fromPrinter = info.source === "printer";
-  pendingFiles = [entry];
+  pendingFiles = list.map((info) => {
+    const entry = newEntry({ name: info.fileName, size: info.size, file: null });
+    entry.uploadId = info.id;
+    entry.fileUrl = info.fileUrl;
+    entry.status = "ready";
+    entry.fromPrinter = info.source === "printer";
+    entry.inBucket = inBucket;
+    return entry;
+  });
   showPrintModal("");
-  loadPreview(entry);
+  for (const entry of pendingFiles) loadPreview(entry);
 }
 
 function newEntry(fields) {
@@ -411,7 +424,7 @@ function discardPending() {
     if (entry.xhr) { try { entry.xhr.abort(); } catch (err) { /* already done */ } }
     if (entry.pdf) { try { entry.pdf.destroy(); } catch (err) { /* already gone */ } }
     for (const picture of entry.pictures.values()) URL.revokeObjectURL(picture);
-    if (entry.uploadId && !entry.printed) {
+    if (entry.uploadId && !entry.printed && !entry.inBucket) {
       fetch("/api/uploads/" + encodeURIComponent(entry.uploadId), { method: "DELETE" }).catch(() => {});
     }
   }
@@ -909,6 +922,9 @@ function updatePrintButton() {
   const waiting = pendingFiles.some((e) => e.status === "uploading" || e.status === "preparing");
   button.disabled = !selectedPrinter() || waiting || !ready.length;
   button.textContent = !selectedPrinter() && printers.length > 1 ? "Choose a printer first" : waiting ? "Getting it ready..." : ready.length > 1 ? "Print " + ready.length + " files" : "Print";
+  // Not when every file is already in the bucket (printing the bucket).
+  $("bucketButton").hidden = !pendingFiles.some((e) => !e.inBucket);
+  $("bucketButton").disabled = waiting || !ready.some((e) => !e.inBucket);
 }
 
 // --- one page, large -----------------------------------------------------------
@@ -1211,6 +1227,11 @@ function setupPrintModal() {
     if (event.target.id === "printModal") closePrintModal();
   });
   $("printButton").addEventListener("click", submitPrint);
+  $("bucketButton").addEventListener("click", addToBucket);
+  $("bucketPrint").addEventListener("click", () => openHeldFiles(bucket, true));
+  $("countdownNow").addEventListener("click", () => sendPrints(stopCountdown()));
+  $("countdownEdit").addEventListener("click", editCountdown);
+  $("countdownCancel").addEventListener("click", cancelCountdown);
   $("optRanges").addEventListener("input", onRangesTyped);
   $("optRanges").addEventListener("blur", renderRangesField);
   setupSegments();
@@ -1246,7 +1267,69 @@ async function submitPrint() {
     orientation: layout.orientation,
     scaling: layout.scaling,
   };
+  const tryOtherPrinter = $("otherKind").checked ? "other" : $("failover").checked ? "same" : "false";
+  startCountdown({ printer, ready, common, tryOtherPrinter });
+}
 
+// --- "Printing in 7 seconds": time to cancel or change it -------------------
+//
+// Nothing goes to the queue until the time is up (or Print now), so Cancel
+// really cancels and Edit returns to the screen exactly as it was. The queue
+// order is the moment it is sent.
+
+const COUNTDOWN_SECONDS = 7;
+let countdown = null; // { printer, ready, common, tryOtherPrinter, left, timer }
+
+function startCountdown(plan) {
+  closePageView();
+  $("printModal").hidden = true;
+  countdown = plan;
+  plan.left = COUNTDOWN_SECONDS;
+  $("countdownSecs").textContent = plan.left;
+  $("countdownWhat").textContent =
+    (plan.ready.length > 1 ? plan.ready.length + " files" : plan.ready[0].name) + " on " + plan.printer.name + ".";
+  const bar = document.querySelector(".countdown-bar");
+  bar.classList.remove("run");
+  void bar.offsetWidth; // restart the animation
+  bar.classList.add("run");
+  $("sendCountdown").hidden = false;
+  $("countdownCancel").focus();
+  plan.timer = setInterval(() => {
+    plan.left -= 1;
+    if (plan.left <= 0) sendPrints(stopCountdown());
+    else $("countdownSecs").textContent = plan.left;
+  }, 1000);
+}
+
+function stopCountdown() {
+  const plan = countdown;
+  if (plan) clearInterval(plan.timer);
+  countdown = null;
+  $("sendCountdown").hidden = true;
+  return plan;
+}
+
+function editCountdown() {
+  if (!stopCountdown()) return;
+  $("printModal").hidden = false;
+  updatePrintButton();
+  $("printButton").focus();
+}
+
+function cancelCountdown() {
+  if (!stopCountdown()) return;
+  const kept = pendingFiles.some((e) => e.inBucket);
+  closePrintModal();
+  setPageMessage("Cancelled. Nothing was printed" + (kept ? "; your files are still in your bucket." : "."), "ok");
+  pageMessageTimer = setTimeout(() => setPageMessage(null), 6000);
+}
+
+async function sendPrints(plan) {
+  if (!plan) return;
+  const { printer, ready, common, tryOtherPrinter } = plan;
+  const button = $("printButton");
+  const box = $("printMessage");
+  $("printModal").hidden = false;
   button.disabled = true;
   button.textContent = "Sending...";
   sending = true;
@@ -1264,7 +1347,7 @@ async function submitPrint() {
           uploadId: entry.uploadId,
           printerId: printer.id,
           options: Object.assign({}, common, { pageRanges: rangesText(entry.chosen) }),
-          tryOtherPrinter: $("otherKind").checked ? "other" : $("failover").checked ? "same" : "false",
+          tryOtherPrinter,
           label,
         }),
       });
@@ -1279,6 +1362,7 @@ async function submitPrint() {
   sending = false;
   button.disabled = false;
   updatePrintButton();
+  loadBucket();
 
   if (failed.length && !sent) {
     box.className = "modal-message error";
@@ -1301,6 +1385,80 @@ async function submitPrint() {
     );
     pageMessageTimer = setTimeout(() => setPageMessage(null), 6000);
   }
+}
+
+// --- the bucket -------------------------------------------------------------
+//
+// Files kept on the website to print later, all at once. They count in the
+// queue only from the moment Print is pressed.
+
+let bucket = [];
+
+async function loadBucket() {
+  try {
+    bucket = await api("/api/bucket");
+  } catch (err) {
+    return; // keep showing what we had
+  }
+  renderBucket();
+}
+
+function renderBucket() {
+  $("bucketCard").hidden = !bucket.length;
+  $("bucketNote").textContent = "\u2014 " + bucket.length + (bucket.length === 1 ? " file" : " files");
+  $("bucketPrint").textContent = bucket.length > 1 ? "Print bucket (" + bucket.length + " files)" : "Print bucket";
+  const box = $("bucketList");
+  box.innerHTML = "";
+  for (const item of bucket) {
+    const row = document.createElement("div");
+    row.className = "file-chip";
+    const name = document.createElement("span");
+    name.className = "fname";
+    name.textContent = item.fileName;
+    row.appendChild(name);
+    const left = document.createElement("span");
+    left.className = "fsize";
+    left.textContent = Math.max(1, Math.ceil(item.expiresInMs / 60000)) + " min left";
+    row.appendChild(left);
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.innerHTML = "&times;";
+    remove.title = "Take it out of your bucket";
+    remove.setAttribute("aria-label", "Take " + item.fileName + " out of your bucket");
+    remove.onclick = async () => {
+      remove.disabled = true;
+      await fetch("/api/uploads/" + encodeURIComponent(item.id), { method: "DELETE" }).catch(() => {});
+      loadBucket();
+    };
+    row.appendChild(remove);
+    box.appendChild(row);
+  }
+}
+
+async function addToBucket() {
+  const box = $("printMessage");
+  const adding = pendingFiles.filter((e) => e.status === "ready" && !e.inBucket);
+  if (!adding.length) return;
+  try {
+    await api("/api/bucket", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ uploadIds: adding.map((e) => e.uploadId) }),
+    });
+  } catch (err) {
+    box.className = "modal-message error";
+    box.textContent = err.message;
+    return;
+  }
+  for (const entry of adding) entry.inBucket = true; // so closing keeps them
+  closePrintModal();
+  setPageMessage(
+    (adding.length > 1 ? "Added " + adding.length + " files" : "Added " + adding[0].name) +
+      " to your bucket. Print it when you're ready, within an hour.",
+    "ok"
+  );
+  pageMessageTimer = setTimeout(() => setPageMessage(null), 6000);
+  loadBucket();
 }
 
 // --- your name -------------------------------------------------------------
@@ -1337,6 +1495,8 @@ function setupNameModal() {
 function setupEscapeToClose() {
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") return;
+    if (!$("whatsNewModal").hidden) { $("whatsNewModal").hidden = true; return; }
+    if (!$("sendCountdown").hidden) { editCountdown(); return; }
     if (!$("pageView").hidden) { closePageView(); return; }
     if (!$("printModal").hidden) { closePrintModal(); return; }
     if (!$("nameModal").hidden) { $("nameModal").hidden = true; return; }
