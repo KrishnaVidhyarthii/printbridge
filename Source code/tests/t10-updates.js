@@ -200,7 +200,7 @@ const log = (c) => { try { return fs.readFileSync(path.join(c.dir, "logs", "upda
   //    computer installs exactly that.
   const src = fs.mkdtempSync(path.join(os.tmpdir(), "pbu-src-"));
   const copy = (rel) => { fs.mkdirSync(path.dirname(path.join(src, rel)), { recursive: true }); fs.cpSync(path.join(ROOT, rel), path.join(src, rel), { recursive: true }); };
-  ["desktop/lib", "desktop/package.json", "desktop/tools/relabel-exe/relabel-exe.js", "release", "server/server.js", "server/package.json", "agent/agent.js", "agent/package.json", "installer/OfficePrinting.nsi", "BUILD-ON-MAC.txt", "installer-mac/BUILD-ON-MAC.txt"].forEach(copy);
+  ["desktop/lib", "desktop/package.json", "desktop/tools/relabel-exe/relabel-exe.js", "release", "server/server.js", "server/package.json", "server/public/whatsnew.js", "agent/agent.js", "agent/package.json", "installer/OfficePrinting.nsi", "BUILD-ON-MAC.txt", "installer-mac/BUILD-ON-MAC.txt"].forEach(copy);
   fs.writeFileSync(path.join(src, "desktop/lib/update-key.js"), "module.exports = {\n  PUBLIC_KEYS: [\n  ],\n};\n");
   // (The copy starts at 4.1.3, whatever the real version is now.)
   const realVersion = require(path.join(ROOT, "desktop/lib/version.js")).VERSION;
@@ -223,6 +223,10 @@ const log = (c) => { try { return fs.readFileSync(path.join(c.dir, "logs", "upda
   const nsi = fs.readFileSync(path.join(src, "installer/OfficePrinting.nsi"), "utf8");
   ok(/VERSION: "4.1.4"/.test(fs.readFileSync(path.join(src, "desktop/lib/version.js"), "utf8")) && /!define VERSION "4.1.4"/.test(nsi) &&
     /const VERSION = "4.1.4"/.test(fs.readFileSync(path.join(src, "agent/agent.js"), "utf8")), "bump: the version number changed everywhere it is written");
+  let noNotes = false;
+  try { pub(["sign", "--key", keyFile]); } catch (e) { noNotes = /What's new/.test(String(e.stderr)); }
+  ok(noNotes, "sign refuses a version with no What's new notes in English, Sinhala and Tamil");
+  fs.appendFileSync(path.join(src, "server/public/whatsnew.js"), '\nvar TEST_NOTES = {\n  "4.1.4": { en: {}, si: {}, ta: {} },\n};\n');
   fs.mkdirSync(path.join(src, "installer", "dist"), { recursive: true });
   fs.writeFileSync(path.join(src, "installer", "dist", "PrintBridgeSetup.exe"), JSON.stringify({ version: "4.1.4" }));
   let notSigned = false;
