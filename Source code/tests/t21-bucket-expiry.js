@@ -31,7 +31,7 @@ b.createdAt = Date.now() - 61 * MIN;
 const fresh = held.create({ storedPath: file("c.pdf"), originalName: "c.pdf", size: 8 });
 fresh.createdAt = Date.now() - 59 * MIN;
 held.sweep();
-ok(!held.get(b.id) && !fs.existsSync(b.storedPath), "bucket file held 61 minutes is thrown away, file deleted");
+ok(!held.get(b.id), "bucket file held 61 minutes is thrown away");
 ok(held.get(fresh.id), "file held 59 minutes is kept");
 
 // --- queued jobs
@@ -62,6 +62,7 @@ remote.expireOld();
 const after = remote.pendingFiles();
 ok(after.length === 1 && after[0] === "y.pdf", "printout waiting 61 minutes for approval is dropped, newer one kept");
 setTimeout(() => {
+  ok(!fs.existsSync(b.storedPath), "the expired bucket file is deleted from disk");
   ok(!fs.existsSync(path.join(dir, "u", "x.pdf")), "its file is deleted");
   console.log(n + " checks passed");
   process.exit(0);
