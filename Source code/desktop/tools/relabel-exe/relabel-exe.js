@@ -31,10 +31,10 @@ vi.setStringValues(lang, {
   LegalCopyright: "Copyright (C) 2026 Devnith AE",
   OriginalFilename: "OfficePrinting.exe",
   InternalName: "OfficePrinting",
-  FileVersion: "4.2.16",
-  ProductVersion: "4.2.16",
+  FileVersion: "4.2.17",
+  ProductVersion: "4.2.17",
 });
-const vParts = "4.2.16".split(".").map((n) => parseInt(n, 10) || 0);
+const vParts = "4.2.17".split(".").map((n) => parseInt(n, 10) || 0);
 vi.setFileVersion(vParts[0] || 0, vParts[1] || 0, vParts[2] || 0, vParts[3] || 0, 1033);
 vi.setProductVersion(vParts[0] || 0, vParts[1] || 0, vParts[2] || 0, vParts[3] || 0, 1033);
 vi.outputToResourceEntries(res.entries);
