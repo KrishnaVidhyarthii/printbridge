@@ -384,6 +384,7 @@ async function start(mode) {
     runGroup(mode === "all" ? "all" : "core", P.STATUS_FILE,
       mode === "all" ? "the background program" : "the background program (startup task)", lock, groups,
       startUpdates(mode));
+    if (mode === "service") watchStartupSwitch();
     return;
   }
 
@@ -410,6 +411,26 @@ async function start(mode) {
   // Automatic updates need administrator rights, which a sign-in doesn't
   // have; this copy only says so when asked (see updater.js).
   runGroup("core", P.STATUS_FILE, "the background program (signed in)", lock, groups, startUpdates("signin"));
+}
+
+// Windows only, run by the startup task: when PrintBridge has been switched
+// off in Startup apps, the printouts part doesn't start at sign-in. Start it
+// for whoever is signed in (it then says what happened, once), so printing
+// from Word or Excel keeps working.
+function watchStartupSwitch() {
+  if (!P.IS_WINDOWS) return;
+  const service = require("./service");
+  let lastTry = 0;
+  const check = async () => {
+    if (Date.now() - lastTry < 10 * 60 * 1000) return; // a failed start isn't retried every minute
+    if (!(await service.startupSwitchedOff())) return;
+    if (await isRunning(P.OUTBOX_LOCK_PORT)) return;
+    lastTry = Date.now();
+    const n = await service.startForSignedInUsers(process.execPath, "start-after-switch-off");
+    if (n) log.line("Switched off in Startup apps: started the printouts part for " + n + (n === 1 ? " person" : " people") + " signed in.");
+  };
+  const timer = setInterval(() => { check().catch(() => {}); }, 60 * 1000);
+  if (timer.unref) timer.unref();
 }
 
 // Automatic updates (see updater.js). A problem there must never stop printing.

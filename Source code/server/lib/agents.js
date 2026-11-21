@@ -102,8 +102,9 @@ const COLOR_MODES = new Set(["auto", "color", "mono"]);
 const PRINTER_TYPES = new Set(["auto", "inkjet", "laser", "dotmatrix", "thermal"]);
 
 // Both sides works the same way: "auto" believes the computer, "yes" and
-// "no" overrule it (a printer can say it has duplex when it hasn't).
-const DUPLEX_MODES = new Set(["auto", "yes", "no"]);
+// "no" overrule it (a printer can say it has duplex when it hasn't), and
+// "hand" means it prints both sides only if someone turns the paper over.
+const DUPLEX_MODES = new Set(["auto", "yes", "no", "hand"]);
 
 function applyColorMode(record) {
   // Printers saved before this existed only have what the computer said.
@@ -117,7 +118,7 @@ function applyColorMode(record) {
   }
   record.capabilities = Object.assign({}, reported || {},
     mode === "auto" ? {} : { color: mode === "color" },
-    duplex === "auto" ? {} : { duplex: duplex === "yes" });
+    duplex === "auto" ? {} : { duplex: duplex === "yes", duplexByHand: duplex === "hand" });
 }
 
 function setColorMode(record, mode) {

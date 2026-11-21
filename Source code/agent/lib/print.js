@@ -198,9 +198,39 @@ async function printWithGhostscript(exe, printerName, filePath, options) {
   return { nativeJobId: "", detail: "Printed with Ghostscript." };
 }
 
+// Some drivers (Canon's, for one) ignore the both-sides setting SumatraPDF
+// sends and use the printer's own default instead. So the default is set
+// to this job's sides while it is handed over, then put back. Best effort:
+// without the rights to change it, the job still prints.
+const DUPLEXING = { "one-sided": "OneSided", "two-sided-long-edge": "TwoSidedLongEdge", "two-sided-short-edge": "TwoSidedShortEdge" };
+function duplexScript(printerName, mode) {
+  const name = "'" + String(printerName).replace(/'/g, "''") + "'";
+  return "$p = " + name + "; $old = (Get-PrintConfiguration -PrinterName $p -ErrorAction Stop).DuplexingMode; " +
+    "if ([string]$old -ne '" + mode + "') { Set-PrintConfiguration -PrinterName $p -DuplexingMode " + mode + " -ErrorAction Stop }; [string]$old";
+}
+
+async function setDuplexing(printerName, sides) {
+  const mode = DUPLEXING[sides] || "OneSided";
+  const r = await runPowerShell(duplexScript(printerName, mode));
+  const old = String(r.stdout || "").trim().split(/\r?\n/).pop();
+  if (!r.ok || !/^(OneSided|TwoSidedLongEdge|TwoSidedShortEdge)$/.test(old)) {
+    console.log("Couldn't set " + printerName + "'s sides to " + mode + " (" + (r.stderr || "").trim().split(/\r?\n/)[0] + ").");
+    return null;
+  }
+  return old === mode ? null : old; // what to put back, if anything changed
+}
+
 async function printOnWindows(printerName, filePath, options, config) {
   const sumatra = findSumatra(config);
-  if (sumatra) return printWithSumatra(sumatra, printerName, filePath, options);
+  if (sumatra) {
+    const putBack = await setDuplexing(printerName, options.sides).catch(() => null);
+    console.log("Printing with SumatraPDF: " + sumatraSettings(options));
+    try {
+      return await printWithSumatra(sumatra, printerName, filePath, options);
+    } finally {
+      if (putBack) await setDuplexing(printerName, Object.keys(DUPLEXING).find((k) => DUPLEXING[k] === putBack)).catch(() => null);
+    }
+  }
 
   const ghostscript = findGhostscript(config);
   if (ghostscript) return printWithGhostscript(ghostscript, printerName, filePath, options);
@@ -258,4 +288,4 @@ async function printFile(printerName, filePath, options, config) {
   return printWithLp(printerName, filePath, options);
 }
 
-module.exports = { printFile, sumatraSettings, lpArguments, waitUntilPrinterIdle };
+module.exports = { printFile, sumatraSettings, lpArguments, waitUntilPrinterIdle, duplexScript };

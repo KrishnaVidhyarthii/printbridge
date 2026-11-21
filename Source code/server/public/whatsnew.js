@@ -4,6 +4,38 @@
 // Google Translate, so the pop-up is marked "notranslate".
 // Newest first. Keep it to 2-4 short lines a person reads in ten seconds.
 var WHATS_NEW = {
+  "4.2.18": {
+    en: {
+      title: "What's new in PrintBridge",
+      items: [
+        "Double-sided printing now works on printers like the Canon LBP6230.",
+        "On printers that can't turn the paper over by themselves, choose “Double-sided (you turn the paper over)”: the fronts print, PrintBridge shows how to turn the stack over, then the backs print.",
+        "Each printer now shows whether it prints both sides by itself, by hand, or one side only.",
+        "If PrintBridge was switched off in Windows Startup apps, it now starts anyway and explains how to switch it back on.",
+      ],
+      ok: "Got it",
+    },
+    si: {
+      title: "PrintBridge හි අලුත් දේ",
+      items: [
+        "Canon LBP6230 වැනි මුද්‍රණ යන්ත්‍රවල දෙපැත්තේ මුද්‍රණය දැන් නිවැරදිව ක්‍රියා කරයි.",
+        "කඩදාසිය තනිවම පෙරළිය නොහැකි යන්ත්‍රවල, PrintBridge මුලින් ඉදිරිපස පිටු මුද්‍රණය කර, කඩදාසි පෙරළන ආකාරය පෙන්වා, පසුව පිටුපස පිටු මුද්‍රණය කරයි.",
+        "සෑම මුද්‍රණ යන්ත්‍රයක්ම දෙපැත්තේ මුද්‍රණය තනිවමද, අතින්ද, නැතහොත් එක් පැත්තක් පමණක්ද යන්න දැන් පෙන්වයි.",
+        "Windows Startup apps හි PrintBridge අක්‍රිය කර ඇත්නම්, එය දැන් ආරම්භ වී නැවත සක්‍රිය කරන ආකාරය පවසයි.",
+      ],
+      ok: "හරි",
+    },
+    ta: {
+      title: "PrintBridge-இல் புதியவை",
+      items: [
+        "Canon LBP6230 போன்ற அச்சுப்பொறிகளில் இருபக்க அச்சிடல் இப்போது சரியாக வேலை செய்கிறது.",
+        "தாளைத் தானாகத் திருப்ப முடியாத அச்சுப்பொறிகளில், PrintBridge முதலில் முன்பக்கங்களை அச்சிட்டு, தாள்களை எப்படித் திருப்புவது என்று காட்டி, பின்னர் பின்பக்கங்களை அச்சிடும்.",
+        "ஒவ்வொரு அச்சுப்பொறியும் இருபக்கமும் தானாகவா, கையாலா, அல்லது ஒரு பக்கம் மட்டுமா என்பதை இப்போது காட்டுகிறது.",
+        "Windows Startup apps-இல் PrintBridge அணைக்கப்பட்டிருந்தால், அது இப்போது தானாகத் தொடங்கி, மீண்டும் இயக்குவது எப்படி என்று சொல்லும்.",
+      ],
+      ok: "சரி",
+    },
+  },
   "4.2.17": {
     en: {
       title: "What's new in PrintBridge",

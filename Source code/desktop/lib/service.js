@@ -142,7 +142,7 @@ async function startNow() {
 // one-off task for that person, set to run only while they are signed in,
 // does it properly. Nobody signed in: nothing to do (it starts at the next
 // sign-in, as always).
-async function startForSignedInUsers(exePath) {
+async function startForSignedInUsers(exePath, args) {
   if (!P.IS_WINDOWS) return 0;
   exePath = exePath || process.execPath;
   const { powershell } = require("./win");
@@ -175,7 +175,8 @@ async function startForSignedInUsers(exePath) {
   </Settings>
   <Actions Context="Author">
     <Exec>
-      <Command>"${xmlText(exePath)}"</Command>
+      <Command>"${xmlText(exePath)}"</Command>${args ? `
+      <Arguments>${xmlText(args)}</Arguments>` : ""}
       <WorkingDirectory>${xmlText(path.dirname(exePath))}</WorkingDirectory>
     </Exec>
   </Actions>
@@ -191,4 +192,25 @@ async function startForSignedInUsers(exePath) {
   return started;
 }
 
-module.exports = { install, remove, startNow, exists, taskXml, startForSignedInUsers };
+// Has someone switched PrintBridge off in Windows' Startup apps (Task
+// Manager or Settings)? Then it no longer starts at sign-in, and printing to
+// the "PrintBridge" printer quietly does nothing. Windows keeps that choice
+// next to the Run entry: an odd first byte means switched off.
+const STARTUP_OFF_SCRIPT =
+  "foreach ($k in 'HKLM:', 'HKCU:') { " +
+  "$v = (Get-ItemProperty ($k + '\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run') -Name '" + P.TASK_NAME + "' -ErrorAction SilentlyContinue).'" + P.TASK_NAME + "'; " +
+  "if ($v) { $v[0] } }";
+
+async function startupSwitchedOff() {
+  if (!P.IS_WINDOWS) return false;
+  const { powershell } = require("./win");
+  const r = await powershell(STARTUP_OFF_SCRIPT);
+  return String(r.stdout || "").split(/\s+/).some((n) => n !== "" && Number(n) % 2 === 1);
+}
+
+const STARTUP_OFF_TEXT =
+  require("./brand").NAME + " was switched off in Windows Startup apps, so printing to the \"" + require("./brand").NAME +
+  "\" printer stopped working after a restart.\n\nIt is running again for now. To keep it on: open Task Manager " +
+  "(Ctrl+Shift+Esc), choose Startup apps, select \"" + P.TASK_NAME + "\" and press Enable.";
+
+module.exports = { install, remove, startNow, exists, taskXml, startForSignedInUsers, startupSwitchedOff, STARTUP_OFF_SCRIPT, STARTUP_OFF_TEXT };

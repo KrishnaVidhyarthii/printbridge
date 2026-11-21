@@ -43,6 +43,10 @@ const managed = async () => JSON.parse((await request("GET", "/api/manage/printe
     ok((await managed()).capabilities.duplex === true, "still yes after the computer reports its printers again");
     await request("POST", "/api/manage/printers/" + encodeURIComponent(p.id) + "/duplex", { mode: "no" });
     ok((await managed()).capabilities.duplex === false, "can be set to no");
+    await request("POST", "/api/manage/printers/" + encodeURIComponent(p.id) + "/duplex", { mode: "hand" });
+    const hand = (await managed()).capabilities;
+    ok(hand.duplex === false && hand.duplexByHand === true, "can be set to by hand (no automatic both sides, so the page offers turning it over)");
+    await request("POST", "/api/manage/printers/" + encodeURIComponent(p.id) + "/duplex", { mode: "no" });
     ok((await request("POST", "/api/manage/printers/" + encodeURIComponent(p.id) + "/duplex", { mode: "maybe" })).status === 400, "anything else is refused");
 
     // A printer's computer says it is jammed: everyone sees it, then it clears.

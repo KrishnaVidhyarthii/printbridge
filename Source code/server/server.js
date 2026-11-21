@@ -373,7 +373,13 @@ app.post("/api/print", upload.single("file"), handleAsync(async (req, res) => {
   // Anything that is not already a PDF is converted here on the server.
   let storedPath;
   let originalName;
-  if (fromHeld) {
+  if (fromHeld && String(req.body.keepHeld) === "true") {
+    // Both sides by hand: the fronts print now, the backs after the paper
+    // is turned over - so this job gets its own copy and the file stays held.
+    storedPath = path.join(UPLOAD_DIR, newId("f") + ".pdf");
+    fs.copyFileSync(fromHeld.storedPath, storedPath);
+    originalName = fromHeld.originalName;
+  } else if (fromHeld) {
     held.take(fromHeld.id);
     storedPath = fromHeld.storedPath;
     originalName = fromHeld.originalName;

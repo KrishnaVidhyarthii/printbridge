@@ -157,7 +157,7 @@ function typeCell(printer) {
 // Colour or black and white, and both sides or not. "Automatic" goes by
 // what the printer's computer says; the others overrule it when that is wrong.
 const COLOR_CHOICES = [["auto", "Automatic"], ["color", "Colour"], ["mono", "Black & white"]];
-const DUPLEX_CHOICES = [["auto", "Automatic"], ["yes", "Yes"], ["no", "No"]];
+const DUPLEX_CHOICES = [["auto", "Automatic"], ["yes", "Yes, by itself"], ["hand", "By hand (turn the paper over)"], ["no", "No"]];
 
 function colorCell(printer) {
   const found = printer.reportedColor === true ? "colour"

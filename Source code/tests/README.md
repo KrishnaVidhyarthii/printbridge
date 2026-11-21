@@ -25,6 +25,7 @@ websites (`fake-web.js`) on spare ports, so nothing else needs to be running.
     node t19-dialogs.js       every pop-up on the print page tells screen readers it is a pop-up, and what it is called
     node t20-printer-settings.js  both sides set by hand, printer problems (jam, no paper) shown, clearing a printer's queue
     node t21-bucket-expiry.js   the bucket is per device; held files, queued jobs and printouts awaiting approval are thrown away after an hour
+    node t22-both-sides.js      both sides: the printer's own default is set for each job, names quoted safely
 
 These run on Linux/macOS. The Windows-only parts (the Task Scheduler task,
 the installer) are covered by manual checks on Windows and Mac.

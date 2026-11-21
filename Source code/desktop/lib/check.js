@@ -233,6 +233,14 @@ async function gather(startIfStopped) {
         `After a power cut, printing stays off until someone signs in to this computer. Run ${B.NAME} Setup again to fix this.`);
   }
 
+  // Switched off in Windows Startup apps: printing to the "PrintBridge"
+  // printer stops working after a restart (see watchStartupSwitch).
+  if (P.IS_WINDOWS && (await require("./service").startupSwitchedOff().catch(() => false))) {
+    add(false, `${B.NAME} is switched off in Windows Startup apps`,
+      `Printing to the "${esc(B.NAME)}" printer stops working after a restart. To fix it: open Task Manager (Ctrl+Shift+Esc), ` +
+      `choose Startup apps, select "${esc(P.TASK_NAME)}" and press Enable.`);
+  }
+
   updatesRow(add);
 
   // This computer used to be the main computer, until another one was made

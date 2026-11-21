@@ -194,6 +194,25 @@
     </div>
   </div>
 
+  <!-- Both sides by hand: turn the paper over between the fronts and the backs -->
+  <div id="flipDialog" class="modal-overlay" hidden>
+    <div class="modal countdown-box" role="dialog" aria-modal="true" aria-labelledby="flipTitle" aria-describedby="flipHow">
+      <div class="modal-body">
+        <h2 id="flipTitle">Now turn the paper over</h2>
+        <p class="countdown-what" id="flipWhat"></p>
+        <ol class="whatsnew-list" id="flipHow">
+          <li>Take the printed pages out of the printer, without changing their order.</li>
+          <li>Turn the whole stack over and put it back in the paper tray, the same way round as before.</li>
+          <li>Press Continue.</li>
+        </ol>
+        <div class="countdown-row">
+          <button class="danger" id="flipStop" type="button">Stop here</button>
+        </div>
+        <button class="big-print" id="flipContinue" type="button">Continue</button>
+      </div>
+    </div>
+  </div>
+
   <!-- One page, large -->
   <div id="pageView" class="modal-overlay page-view" hidden>
     <div class="modal pv-box" role="dialog" aria-modal="true" aria-labelledby="pvTitle">

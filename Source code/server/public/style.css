@@ -824,3 +824,6 @@ details.tools summary { cursor: pointer; color: var(--muted); font-size: 13px; w
 .whatsnew-langs button[aria-pressed=true] { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
 .whatsnew-list { margin: 0 0 18px; padding-left: 20px; line-height: 1.5; }
 .whatsnew-list li { margin-bottom: 8px; }
+
+/* both sides: on the printer cards */
+.chip.sides { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }

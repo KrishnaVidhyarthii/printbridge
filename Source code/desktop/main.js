@@ -84,6 +84,19 @@ function readChoices(file) {
 
 async function main() {
   switch (command) {
+    case "start-after-switch-off": {
+      // Started by the startup task because sign-in no longer starts it:
+      // say why, without holding up the printouts part.
+      require("./lib/win").showMessage(require("./lib/brand").NAME, require("./lib/service").STARTUP_OFF_TEXT).catch(() => {});
+      try {
+        await require("./lib/supervisor").start();
+      } catch (err) {
+        try { require("./lib/log").logger("office-printing").line("Couldn't start: " + (err && err.stack ? err.stack : err)); } catch (e) { /* nowhere to say it */ }
+        process.exitCode = 1;
+      }
+      return;
+    }
+
     case "start":
     case "service": {
       // Awaited and caught: this program has no window, so a problem while

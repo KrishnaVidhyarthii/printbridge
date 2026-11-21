@@ -1048,6 +1048,7 @@ function renderPrinterPick() {
       (brand ? '<span class="chip brand" style="--brand:' + brand.color + '">' + brand.name + "</span>" : "") +
       '<span class="chip kind">' + kind.name + "</span>" +
       (color === true ? '<span class="chip colour">Colour</span>' : color === false ? '<span class="chip mono">Black &amp; white</span>' : "") +
+      sidesChip(printer.capabilities) +
       "</span>" +
       '<span class="pmeta"><span class="dot ' + (printer.online ? "on" : "off") + '"></span>' +
       escapeHtml(printer.computerName) + (printer.online ? "" : " &mdash; off right now, it will wait") + "</span>" +
@@ -1168,6 +1169,11 @@ function renderOptions() {
       ["two-sided-long-edge", "Double-sided (flip on long edge)"],
       ["two-sided-short-edge", "Double-sided (flip on short edge)"],
     ], "one-sided")));
+  } else if (caps.duplexByHand === true) {
+    box.appendChild(field("Sides", selectEl("optSides", [
+      ["one-sided", "Single-sided"],
+      [HAND_FLIP, "Double-sided (you turn the paper over)"],
+    ], "one-sided")));
   }
 
   $("layoutOpts").querySelector("#optRanges").closest(".field").hidden = caps.pageRanges === false;
@@ -1232,6 +1238,8 @@ function setupPrintModal() {
   $("countdownNow").addEventListener("click", () => sendPrints(stopCountdown()));
   $("countdownEdit").addEventListener("click", editCountdown);
   $("countdownCancel").addEventListener("click", cancelCountdown);
+  $("flipContinue").addEventListener("click", () => flipAnswer && flipAnswer(true));
+  $("flipStop").addEventListener("click", () => flipAnswer && flipAnswer(false));
   $("optRanges").addEventListener("input", onRangesTyped);
   $("optRanges").addEventListener("blur", renderRangesField);
   setupSegments();
@@ -1338,19 +1346,35 @@ async function sendPrints(plan) {
   const failed = [];
   let sent = 0;
 
+  const byHand = common.sides === HAND_FLIP;
+  const send = (entry, pageRanges, keepHeld) => api("/api/print", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      uploadId: entry.uploadId,
+      printerId: printer.id,
+      options: Object.assign({}, common, byHand ? { sides: "one-sided" } : {}, { pageRanges }),
+      tryOtherPrinter: byHand ? "false" : tryOtherPrinter, // the backs must go to the same printer
+      label,
+      keepHeld,
+    }),
+  });
+
   for (const entry of ready) {
     try {
-      await api("/api/print", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          uploadId: entry.uploadId,
-          printerId: printer.id,
-          options: Object.assign({}, common, { pageRanges: rangesText(entry.chosen) }),
-          tryOtherPrinter,
-          label,
-        }),
-      });
+      const halves = byHand ? handFlipHalves(entry) : null;
+      if (!halves || !halves.backs.length) {
+        await send(entry, halves ? halves.fronts.join(",") : rangesText(entry.chosen), false);
+      } else {
+        box.className = "modal-message";
+        box.textContent = "Printing the front sides of " + entry.name + "...";
+        const first = await send(entry, halves.fronts.join(","), true);
+        const how = await waitForJob(first.job.id);
+        if (how !== "done") throw new Error("the front sides didn't print (" + how + "), so the backs weren't sent");
+        if (!(await askToFlip(entry.name, halves.backs.length))) throw new Error("only the front sides were printed");
+        box.textContent = "Printing the back sides of " + entry.name + "...";
+        await send(entry, halves.backs.join(","), false);
+      }
       entry.printed = true;
       sent += 1;
     } catch (err) {
@@ -1385,6 +1409,55 @@ async function sendPrints(plan) {
     );
     pageMessageTimer = setTimeout(() => setPageMessage(null), 6000);
   }
+}
+
+// --- both sides by hand ----------------------------------------------------
+//
+// For a printer that can't turn the paper over itself: the front sides
+// (1st, 3rd, 5th... chosen page) print first; the person turns the stack
+// over and puts it back; then the backs print, last one first.
+// shortcut: back order assumes the usual stack flip; confirm per printer model if pages come out mismatched.
+
+const HAND_FLIP = "hand-long";
+
+function sidesChip(caps) {
+  if (!caps) return "";
+  if (caps.duplex === true) return '<span class="chip sides">Both sides</span>';
+  if (caps.duplexByHand === true) return '<span class="chip sides">Both sides by hand</span>';
+  if (caps.duplex === false) return '<span class="chip sides">One side only</span>';
+  return "";
+}
+
+function handFlipHalves(entry) {
+  const pages = entry.chosen.size
+    ? [...entry.chosen].sort((a, b) => a - b)
+    : Array.from({ length: entry.pageCount || 1 }, (_, i) => i + 1);
+  return {
+    fronts: pages.filter((_, i) => i % 2 === 0),
+    backs: pages.filter((_, i) => i % 2 === 1).reverse(),
+  };
+}
+
+// "done", "failed", "cancelled" or "too slow".
+async function waitForJob(jobId) {
+  const until = Date.now() + 15 * 60 * 1000;
+  while (Date.now() < until) {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    const mine = await api("/api/my-jobs").catch(() => []);
+    const job = mine.find((j) => j.id === jobId);
+    if (job && ["done", "failed", "cancelled"].includes(job.status)) return job.status;
+  }
+  return "too slow";
+}
+
+let flipAnswer = null;
+function askToFlip(name, backs) {
+  $("flipWhat").textContent = name + ": " + backs + (backs === 1 ? " back side" : " back sides") + " to print.";
+  $("flipDialog").hidden = false;
+  $("flipContinue").focus();
+  return new Promise((resolve) => {
+    flipAnswer = (yes) => { $("flipDialog").hidden = true; flipAnswer = null; resolve(yes); };
+  });
 }
 
 // --- the bucket -------------------------------------------------------------
@@ -1495,6 +1568,7 @@ function setupNameModal() {
 function setupEscapeToClose() {
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") return;
+    if (!$("flipDialog").hidden) { if (flipAnswer) flipAnswer(false); return; }
     if (!$("whatsNewModal").hidden) { $("whatsNewModal").hidden = true; return; }
     if (!$("sendCountdown").hidden) { editCountdown(); return; }
     if (!$("pageView").hidden) { closePageView(); return; }

@@ -147,7 +147,10 @@ async function runPowerShell(script) {
 // Windows comes with several "printers" that aren't printers: they save a
 // file or open an app instead, which would pop up a dialog on this computer
 // that nobody is there to answer - so the job would just hang. Leave them out.
-const PRETEND_PRINTER_NAMES = /^(microsoft print to pdf|microsoft xps document writer|fax|onenote\b.*|send to onenote\b.*)$/i;
+// Also programs that pose as printers: AnyDesk's sends the document to
+// whoever is connected remotely, and PDF "printers" open a save window on
+// this computer, where nobody is looking.
+const PRETEND_PRINTER_NAMES = /^(microsoft print to pdf|microsoft xps document writer|fax|onenote\b.*|send to onenote\b.*|anydesk printer\b.*|pdf24( printer| pdf)?|adobe pdf|cutepdf writer|pdfcreator|bullzip pdf printer|foxit (pdf|phantompdf) (editor )?printer|nitro pdf creator.*)$/i;
 const PRETEND_PRINTER_PORTS = /^(portprompt:|shrfax:|nul:?)$/i;
 
 // The "PrintBridge" printer this program adds (for Excel, Word and
@@ -190,6 +193,7 @@ async function listWindowsPrinters() {
   }
   if (!Array.isArray(parsed)) parsed = [parsed];
 
+  const byHand = await printersWithoutDuplexUnit();
   return parsed
     .filter((item) => item && item.Name && !isPretendPrinter(item))
     .map((item) => {
@@ -203,12 +207,32 @@ async function listWindowsPrinters() {
           paperSizes: papers,
           defaultPaper: papers.includes("A4") ? "A4" : papers[0] || null,
           color: capabilityNumbers.includes(2), // Win32_Printer: 2 = colour, 3 = duplex, 4 = copies
-          duplex: capabilityNumbers.includes(3),
+          // A driver that offers both sides but whose printer has no unit to
+          // turn the paper over (it says so in a "DuplexUnit" setting):
+          // both sides only by turning the paper over by hand.
+          duplex: capabilityNumbers.includes(3) && !byHand.has(String(item.Name)),
+          duplexByHand: capabilityNumbers.includes(3) && byHand.has(String(item.Name)),
           maxCopies: 99,
           pageRanges: true,
         },
       };
     });
+}
+
+// Printers whose driver says its both-sides unit isn't fitted. Many drivers
+// don't say either way; those are left as the driver reports them. Anything
+// going wrong here just means nobody is marked.
+let lastWithoutUnit = new Set();
+async function printersWithoutDuplexUnit() {
+  const r = await runPowerShell(
+    "Get-Printer | ForEach-Object { $n = $_.Name; " +
+    "Get-PrinterProperty -PrinterName $n -ErrorAction SilentlyContinue | " +
+    "Where-Object { $_.PropertyName -match 'DuplexUnit' -and [string]$_.Value -match '^(NotInstalled|None|False|Not ?Available)$' } | " +
+    "Select-Object -First 1 | ForEach-Object { $n } }");
+  // A slow or failed check keeps the last answer, so printers don't flip
+  // between "automatic" and "by hand" on the print page.
+  if (!r.ok) return lastWithoutUnit;
+  return lastWithoutUnit = new Set(String(r.stdout).split(/\r?\n/).map((l) => l.trim()).filter(Boolean));
 }
 
 // --- the one function the agent calls -----------------------------------
