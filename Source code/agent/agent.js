@@ -22,7 +22,7 @@ const WebSocket = require("ws");
 
 const { listPrintersWithCapabilities } = require("./lib/printers");
 const durable = require("./lib/durable");
-const { printFile, waitUntilPrinterIdle } = require("./lib/print");
+const { printFile, waitUntilPrinterIdle, useDuplexStateFile, restorePendingDuplex } = require("./lib/print");
 const { printerHealth, clearPrinterQueue, STALE_MINUTES } = require("./lib/health");
 
 // When bundled with pkg, __dirname points *inside* the packaged snapshot,
@@ -48,6 +48,11 @@ fs.mkdirSync(DOWNLOAD_DIR, { recursive: true });
 for (const name of fs.readdirSync(DOWNLOAD_DIR)) {
   try { fs.rmSync(path.join(DOWNLOAD_DIR, name), { force: true }); } catch (err) { /* in use: next start */ }
 }
+
+// A job that changed a printer's both-sides default and was stopped before
+// putting it back (power cut, update): put it back now.
+useDuplexStateFile(path.join(SETTINGS_DIR, "duplex-restore.json"));
+restorePendingDuplex().catch((err) => console.log("Couldn't restore a printer setting: " + err.message));
 
 // --- the bundled printing helper ----------------------------------------
 //
@@ -668,10 +673,17 @@ function connect() {
       console.log("Server said:", message.message);
       return;
     }
+    // Only this computer's own printers, and ids that are plain words: names and
+    // ids come from the website, which anyone on the network could imitate.
+    const knownPrinter = (name) => !lastPrinterNames.length || lastPrinterNames.includes(String(name));
     if (message.type === "job") {
+      if (!/^[\w-]+$/.test(String(message.jobId || "")) || !knownPrinter(message.printer)) {
+        console.log("Ignored a job for a printer or id this computer doesn't know.");
+        return;
+      }
       handleJob(message).catch((err) => console.log("Job error:", err.message));
     }
-    if (message.type === "clear-queue" && message.printer) {
+    if (message.type === "clear-queue" && message.printer && knownPrinter(message.printer)) {
       const name = String(message.printer);
       clearedAt.set(name, Date.now());
       clearPrinterQueue(name).then((ok) => {
@@ -912,8 +924,24 @@ async function handleJob(job) {
   }
 }
 
+// Jobs this run is already waiting on or printing: a repeat of the same job is ignored.
+const inFlight = new Set();
+
 async function handleOneJob(job) {
   const key = jobKey(job);
+  if (inFlight.has(key)) {
+    console.log("Job", job.jobId, "is already waiting or being printed; not starting it again.");
+    return;
+  }
+  inFlight.add(key);
+  try {
+    await handleOneJobNow(job, key);
+  } finally {
+    inFlight.delete(key);
+  }
+}
+
+async function handleOneJobNow(job, key) {
   const seen = handledJobs.get(key);
   if (seen && seen.status === "working") {
     // Only while this program is still running - after a restart, a job
@@ -932,8 +960,6 @@ async function handleOneJob(job) {
     reportStatus(job.jobId, ended.status, ended.message, ended.nativeJobId, ended.noFailover);
     return;
   }
-  rememberJob(key, { status: "working", run: RUN_ID });
-
   console.log("Job", job.jobId, "for", job.printer, "-", job.fileName);
   reportStatus(job.jobId, "accepted", "Agent picked up the job.");
 
@@ -969,6 +995,9 @@ async function handleOneJob(job) {
         throw new Error(job.printer + " was busy or stuck for " + STALE_MINUTES + " minutes, so this wasn't printed (it would have come out much later). Check the printer, then send it again.");
       }
     }
+    // From here on a restart could mean part of it came out, so it is remembered as working.
+    // (While it only waited for its turn, a restart just means it is sent again.)
+    rememberJob(key, { status: "working", run: RUN_ID });
     reportStatus(job.jobId, "printing", "Sending to " + job.printer + ".");
     const result = await printFile(job.printer, filePath, job.options || {}, config);
     console.log("  printed:", result.detail);
@@ -1032,15 +1061,21 @@ function writeStatus(state, message) {
     agentName: (config && config.agentName) || process.env.OP_NAME || os.hostname(),
     printers: lastPrinterNames,
     busy: printingNow,
-    busyAt: printingSince,
+    // While anything is waiting or printing it counts as busy now: the update
+    // runner trusts this for 20 minutes, and a job can wait and print longer.
+    busyAt: printingNow > 0 ? Date.now() : printingSince,
     updatedAt: Date.now(),
   };
   try {
-    fs.writeFileSync(STATUS_FILE, JSON.stringify(status, null, 2));
+    // Whole or not at all: the Check page never reads half a file.
+    const tmp = STATUS_FILE + ".tmp";
+    fs.writeFileSync(tmp, JSON.stringify(status, null, 2));
+    fs.renameSync(tmp, STATUS_FILE);
   } catch (err) {
     /* only informational */
   }
 }
+setInterval(() => { if (printingNow > 0) writeStatus(lastState, lastMessage); }, 5 * 60 * 1000).unref();
 
 // Saved by writing a flushed temporary copy and swapping it in, plus a
 // backup copy, so a power cut can't leave this computer without its

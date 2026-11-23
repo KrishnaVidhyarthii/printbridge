@@ -89,7 +89,7 @@ function cleanOptions(raw) {
   const pageRanges = String(input.pageRanges || "").trim();
 
   return {
-    paper: String(input.paper || "").trim() || null,
+    paper: String(input.paper || "").trim().slice(0, 40) || null,
     color: input.color === "color" ? "color" : "monochrome",
     sides: SIDES.has(input.sides) ? input.sides : "one-sided",
     copies,

@@ -6,6 +6,8 @@ const WebSocket = require(path.join(ROOT, "server", "node_modules", "ws"));
 const PORT = 3720;
 let n = 0; const ok = (c, m) => { assert(c, m); n++; console.log("  ok -", m); };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// Waits for something that happens in another program, instead of guessing how long it takes.
+const until = async (fn, ms = 8000) => { for (const t = Date.now(); Date.now() - t < ms;) { if (await fn()) return true; await sleep(50); } return false; };
 
 function request(method, p, body) {
   return new Promise((resolve) => {
@@ -31,7 +33,7 @@ const managed = async () => JSON.parse((await request("GET", "/api/manage/printe
     ws = new WebSocket("ws://127.0.0.1:" + PORT + "/agent");
     await new Promise((r) => ws.on("open", r));
     ws.send(JSON.stringify({ type: "hello", token: added.token, printers: [{ name: "Office", capabilities: { color: false, duplex: false } }] }));
-    await sleep(400);
+    await until(managed);
 
     let p = await managed();
     ok(p && p.duplexMode === "auto" && p.reportedDuplex === false && p.capabilities.duplex === false, "starts as what the computer says (no)");
@@ -48,6 +50,29 @@ const managed = async () => JSON.parse((await request("GET", "/api/manage/printe
     ok(hand.duplex === false && hand.duplexByHand === true, "can be set to by hand (no automatic both sides, so the page offers turning it over)");
     await request("POST", "/api/manage/printers/" + encodeURIComponent(p.id) + "/duplex", { mode: "no" });
     ok((await request("POST", "/api/manage/printers/" + encodeURIComponent(p.id) + "/duplex", { mode: "maybe" })).status === 400, "anything else is refused");
+
+    // Removing a computer and clearing a queue are for the main computer itself;
+    // adding one (how a printer computer joins) stays open to the network.
+    const asOther = (method, p2, body) => new Promise((resolve) => {
+      const req = http.request({ host: "127.0.0.1", port: PORT, method, path: p2, headers: { "content-type": "application/json", host: "192.168.1.50:" + PORT } }, (r) => {
+        let d = ""; r.on("data", (c) => d += c); r.on("end", () => resolve({ status: r.statusCode, body: d }));
+      });
+      req.on("error", () => resolve(null));
+      req.end(body ? JSON.stringify(body) : undefined);
+    });
+    ok((await asOther("POST", "/api/manage/printers/" + encodeURIComponent(p.id) + "/clear-queue")).status === 403, "clearing a queue from another computer is refused");
+    ok((await asOther("DELETE", "/api/manage/computers/" + added.computer.id)).status === 403, "removing a computer from another computer is refused");
+    ok((await asOther("POST", "/api/manage/computers", { name: "Newcomer" })).status === 200, "a new printer computer can still join from the network");
+
+    // A printer that drops out of its computer's list and comes back keeps what was set on Printers & setup.
+    await request("POST", "/api/manage/printers/" + encodeURIComponent(p.id) + "/broken", { broken: true });
+    ws.send(JSON.stringify({ type: "printers", printers: [] }));
+    await until(async () => !(await managed()));
+    ok(!(await managed()), "a printer missing from its computer's list is forgotten");
+    ws.send(JSON.stringify({ type: "printers", printers: [{ name: "Office", capabilities: { color: false, duplex: false } }] }));
+    await until(managed);
+    ok((await managed()).broken === true, "...and when it comes back it is still marked out of order");
+    await request("POST", "/api/manage/printers/" + encodeURIComponent((await managed()).id) + "/broken", { broken: false });
 
     // Out of order: still listed for everyone, but nothing can be sent to it.
     const brokenUrl = "/api/manage/printers/" + encodeURIComponent(p.id) + "/broken";
@@ -101,19 +126,19 @@ const managed = async () => JSON.parse((await request("GET", "/api/manage/printe
 
     const beforeJam = sseQueues.length;
     ws.send(JSON.stringify({ type: "health", printers: [{ name: "Office", problem: "Paper jam", waiting: 2 }, { name: "Not mine", problem: "x" }, null] }));
-    await sleep(300);
     const listed = () => request("GET", "/api/printers").then((r) => JSON.parse(r.body).find((x) => x.name === "Office"));
+    await until(async () => (await listed()).problem === "Paper jam");
     ok((await listed()).problem === "Paper jam", "a jam reported by the printer's computer shows on the print page");
     ok(await waitFor(() => sseQueues.slice(beforeJam).some((q) => q.some((j) => j.printerProblem === "Paper jam"))), "live queue update shows the jam right away");
     const beforeClear = sseQueues.length;
     ws.send(JSON.stringify({ type: "health", printers: [{ name: "Office", problem: "", waiting: 0 }] }));
-    await sleep(300);
+    await until(async () => (await listed()).problem === "");
     ok((await listed()).problem === "", "and goes away once it is fixed");
     ok(await waitFor(() => sseQueues.slice(beforeClear).some((q) => q.length && q.every((j) => j.printerProblem === ""))), "clearing the jam broadcasts to the live queue too");
 
     // Clearing the queue cancels what waits for it and tells its computer.
     const cleared = JSON.parse((await request("POST", "/api/manage/printers/" + encodeURIComponent(p.id) + "/clear-queue")).body);
-    await sleep(300);
+    await until(() => got.some((m) => m.type === "clear-queue"));
     ok(cleared.ok && cleared.cancelled === 1 && cleared.computerOnline === true, "clearing a queue answers ok");
     ok(got.some((m) => m.type === "clear-queue" && m.printer === "Office"), "the printer's computer is told to empty its own queue");
 

@@ -69,7 +69,10 @@ if ($hib -eq 0) { Ok "Hibernate is switched off" }
 elseif ($null -eq $hib) { Info "Hibernate setting could not be read." }
 else { Bad "Hibernate is switched on." $runSetup }
 Test-Zero "Closing the lid does nothing" SUB_BUTTONS LIDACTION "Closing the lid would put this computer to sleep."
-Test-Zero "The power button will not switch it off by accident" SUB_BUTTONS PBUTTONACTION "A tap on the power button would sleep or shut down this computer."
+$pb = Get-PowerValues SUB_BUTTONS PBUTTONACTION
+if ($null -eq $pb) { Info "The power button: could not be read on this computer." }
+elseif ($pb.AC -eq 3 -and $pb.DC -eq 3) { Ok "The power button shuts the computer down (not left doing nothing)" }
+else { Bad "The power button is set to do something other than shut down." $runSetup }
 $screen = Get-PowerValues SUB_VIDEO VIDEOIDLE
 if ($screen) {
     if ($screen.AC -eq 0) { Info "The screen never switches off (fine, just uses more power)." }

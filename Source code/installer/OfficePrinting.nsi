@@ -1115,6 +1115,12 @@ Section "${BRAND}" SecMain
   DetailPrint "Copying files..."
   SetDetailsPrint none
   SetOutPath "$INSTDIR"
+  ; An update keeps a copy of the program that is already here until the new
+  ; one is in place, so a copy that fails half-way can be undone.
+  ${If} ${FileExists} "$INSTDIR\${EXE}"
+    Delete "$INSTDIR\${EXE}.bak"
+    CopyFiles /SILENT "$INSTDIR\${EXE}" "$INSTDIR\${EXE}.bak"
+  ${EndIf}
   ; When updating, the old program file must be gone before the new one
   ; can take its place. Give Windows a few seconds to let go of it.
   StrCpy $R0 0
@@ -1136,8 +1142,12 @@ Section "${BRAND}" SecMain
   ${If} ${FileExists} "$INSTDIR\${EXE}"
     SetDetailsPrint both
     DetailPrint "PROBLEM: the previous version in $INSTDIR couldn't be replaced."
+    ; Its start-up task was removed above: put it back, and start the program again.
+    Delete "$INSTDIR\${EXE}.bak"
+    !insertmacro OP 'install-service'
+    !insertmacro OP 'start-service'
     Exec '"$WINDIR\explorer.exe" "$INSTDIR\${EXE}"'
-    MessageBox MB_OK|MB_ICONSTOP "Setup couldn't replace the ${BRAND} that is already on this computer, because Windows is still using it. Nothing has been changed, and the version already here keeps working.$\r$\n$\r$\nRestart the computer and run Setup again." /SD IDOK
+    MessageBox MB_OK|MB_ICONSTOP "Setup couldn't replace the ${BRAND} that is already on this computer, because Windows is still using it. The version already here has been started again and keeps working, including after a restart.$\r$\n$\r$\nRestart the computer and run Setup again." /SD IDOK
     SetErrorLevel 4
     Abort
   ${EndIf}
@@ -1148,6 +1158,17 @@ Section "${BRAND}" SecMain
   File "README.txt"
   ${IfNot} ${FileExists} "$INSTDIR\${EXE}"
     DetailPrint "PROBLEM: the program could not be copied into $INSTDIR."
+    ${If} ${FileExists} "$INSTDIR\${EXE}.bak"
+      ; An update that failed: the previous version is put back and started
+      ; again, rather than leaving this computer with no program at all.
+      Rename "$INSTDIR\${EXE}.bak" "$INSTDIR\${EXE}"
+      !insertmacro OP 'install-service'
+      !insertmacro OP 'start-service'
+      Exec '"$WINDIR\explorer.exe" "$INSTDIR\${EXE}"'
+      MessageBox MB_OK|MB_ICONSTOP "Setup could not copy the new version of ${BRAND} into $INSTDIR. The version that was already here has been put back and started again, so printing carries on.$\r$\n$\r$\nThis is usually security software or a full disk. Restart the computer and run Setup again." /SD IDOK
+      SetErrorLevel 4
+      Abort
+    ${EndIf}
     ; Nothing works without it, and the uninstaller isn't written until the
     ; end of this section - so the few files already copied are taken back
     ; out here, rather than being left in Program Files with no entry in
@@ -1161,12 +1182,19 @@ Section "${BRAND}" SecMain
     SetErrorLevel 4
     Abort
   ${EndIf}
+  ; The new program is in place: the copy kept for an undo is not needed.
+  Delete "$INSTDIR\${EXE}.bak"
 
   ; Everyone who signs in to this computer runs ${BRAND}, so they
   ; all need to be able to save its settings and logs.
   CreateDirectory "$APPDATA\${APP}"
   SetDetailsPrint both
   !insertmacro QUIET '"$SYSDIR\icacls.exe" "$APPDATA\${APP}" /grant *S-1-5-32-545:(OI)(CI)M /T /Q'
+  ; Not the website's own folder: it holds the remote printing key and the
+  ; documents waiting to be printed, which other people signed in here have
+  ; no business reading. Only the system (which runs the website) and administrators.
+  CreateDirectory "$APPDATA\${APP}\website"
+  !insertmacro QUIET '"$SYSDIR\icacls.exe" "$APPDATA\${APP}\website" /inheritance:r /grant:r *S-1-5-18:(OI)(CI)F *S-1-5-32-544:(OI)(CI)F /T /Q'
 
   ; Save this computer's choices (a UTF-16 file, so any name survives).
   FileOpen $9 "$PLUGINSDIR\choices.txt" w

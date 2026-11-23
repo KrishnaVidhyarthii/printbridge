@@ -392,7 +392,7 @@ c.push(
     ["LibreOffice (optional)", "Downloaded from The Document Foundation and installed silently, without taking over opening Office files. If that fails, `winget` is tried."],
   ], 2900),
   H2("Printing from programs"),
-  P("Windows writes each printout to the outbox file. The program moves it aside the moment Windows has finished, sends it to the main computer, and opens the printing page on it in the browser. The main computer holds it (for up to 3 hours) until someone presses Print, and throws it away if the page is closed. If the main computer can't be reached, a page explains, and the printout is kept in `outbox\\not sent` for a week."),
+  P("Windows writes each printout to the outbox file. The program moves it aside the moment Windows has finished, sends it to the main computer, and opens the printing page on it in the browser. The main computer holds it (for up to 1 hour) until someone presses Print, and throws it away if the page is closed. If the main computer can't be reached, a page explains, and the printout is kept in `outbox\\not sent` for a week."),
   P("If several people are signed in to one computer at the same time, the printing page opens for the person who signed in first."),
   H2("How other computers find the main computer"),
   P("First they ask the whole network at once (a UDP broadcast on port 39276); the main computer answers with its address and a permanent id. If nothing answers (an older main computer, or a network that blocks broadcasts), they look on their own network (up to 1,022 neighbouring addresses) for port 3000 and ask whether it's the printing page. If the main computer's address changes, they find it again and reconnect, recognising it by its id, and they also try it by its computer name. Computers that only print check every minute, so they already know the new address before anyone prints. The full search becomes less frequent while the main computer can't be found, down to one every 10 to 15 minutes."),
@@ -406,7 +406,7 @@ c.push(
   H2("Things to know"),
   bullet("The program isn't signed with a code-signing certificate, which is why Windows SmartScreen shows a warning the first time. Some antivirus products may also be cautious about it."),
   bullet("There are no accounts: anyone on the network can print and manage printers. Keep it on a private office network, never on the internet."),
-  bullet("Nothing is printed outside the office. Uploaded files are deleted after printing (or after 3 hours if never printed). Only if you use the optional drop page for printing from anywhere are files kept online, locked so only the office can open them, until collected (14 days at most)."),
+  bullet("Nothing is printed outside the office. Uploaded files are deleted after printing (or after 1 hour if never printed). Only if you use the optional drop page for printing from anywhere are files kept online, locked so only the office can open them, until collected (14 days at most)."),
   bullet("Every computer on 4.1.3 or newer updates itself (it checks every hour and waits until nothing is printing), and only installs versions signed with PrintBridge's update key. **Check PrintBridge** and the **Printers & setup** page show each computer's version."),
   bullet("On **Printers & setup**, check each printer's **Type** and **Colour**. They show on the printer cards and decide which printers can stand in for each other: a laser printer set as inkjet won't stand in for a laser."),
 );

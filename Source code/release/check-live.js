@@ -16,11 +16,12 @@ const base = MANIFEST_URL.replace(/latest\.json$/, "");
     try { signed = signed || crypto.verify(null, manifest, crypto.createPublicKey({ key: Buffer.from(k, "base64"), format: "der", type: "spki" }), sig); } catch (e) { /* other format */ }
   }
   const m = JSON.parse(manifest);
-  console.log("Version " + m.version + ": signature " + (signed ? "OK" : "WRONG"));
+  console.log("Version " + m.version + ": signature " + (signed ? "OK" : "WRONG") + (m.paused ? " (paused: computers that haven't installed it wait)" : ""));
   let ok = signed;
   for (const [name, file] of Object.entries(m.files || {})) {
     if (!file || !file.url || !file.sha256) continue;
-    const match = crypto.createHash("sha256").update(await get(file.url)).digest("hex") === file.sha256;
+    // A manifest made with --relative lists bare file names, next to latest.json.
+    const match = crypto.createHash("sha256").update(await get(new URL(file.url, base).toString())).digest("hex") === file.sha256;
     console.log("  " + name + ": " + (match ? "OK" : "DOESN'T MATCH"));
     ok = ok && match;
   }

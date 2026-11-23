@@ -348,7 +348,7 @@ app.post("/api/print", upload.single("file"), handleAsync(async (req, res) => {
   const printer = agents.findPrinter(String(req.body.printerId || ""));
   if (!printer || !agents.canPrintTo(printer)) {
     cleanup();
-    res.status(404).json({ error: "That printer is not available." });
+    res.status(404).json({ error: printer && printer.broken ? "That printer is marked out of order. Choose another one." : "That printer is not available." });
     return;
   }
 
@@ -584,7 +584,9 @@ app.post("/api/manage/printers/:id/broken", (req, res) => {
   printer.broken = req.body.broken;
   if (printer.broken) {
     for (const job of db.jobs.filter((j) => j.printerId === printer.id && j.status === "queued")) {
-      jobs.finish(job, "failed", "Not printed: " + printer.name + " is marked out of order at the office. Print it on another printer.");
+      jobs.finish(job, "failed", job.sentAt
+        ? printer.name + " was marked out of order at the office. It had already been sent to it, so it may still come out."
+        : "Not printed: " + printer.name + " is marked out of order at the office. Print it on another printer.");
     }
   }
   save();
@@ -609,7 +611,7 @@ app.post("/api/manage/printers/:id/color", (req, res) => {
 
 // Throws away everything waiting for a printer, here and in its computer's
 // own queue - for after a jam, so a backlog doesn't all come out at once.
-app.post("/api/manage/printers/:id/clear-queue", (req, res) => {
+app.post("/api/manage/printers/:id/clear-queue", onlyOnMainComputer, (req, res) => {
   const printer = agents.findPrinter(req.params.id);
   if (!printer) {
     res.status(404).json({ error: "No such printer." });
@@ -717,7 +719,7 @@ function removeComputer(id) {
   return true;
 }
 
-app.delete("/api/manage/computers/:id", (req, res) => {
+app.delete("/api/manage/computers/:id", onlyOnMainComputer, (req, res) => {
   if (!removeComputer(req.params.id)) {
     res.status(404).json({ error: "No such computer." });
     return;
@@ -840,6 +842,14 @@ function remoteAsync(fn) {
   return (req, res) => Promise.resolve(fn(req, res)).catch((err) => {
     res.status(err.status && err.status < 500 ? 400 : 502).json({ error: err.message || "That didn't work." });
   });
+}
+// Removing a computer or emptying a queue can only be done on the main
+// computer itself: anyone on the office network can open Printers & setup,
+// but not throw the office's printers out of it. (Adding a computer stays open:
+// that is how a printer computer joins, with no account to sign in to.)
+function onlyOnMainComputer(req, res, next) {
+  if (fromThisComputer(req)) return next();
+  res.status(403).json({ error: "Open this page on the main computer itself to do this." });
 }
 function onlyHere(req, res, next) {
   if (fromThisComputer(req)) return next();

@@ -53,6 +53,19 @@ function disconnectAgent(agentId) {
   events.emit("printers-changed");
 }
 
+// What was set by hand on Printers & setup, kept for a printer that drops out
+// of its computer's list, so it isn't lost when the printer comes back.
+const KEPT_SETTINGS = ["hidden", "broken", "colorMode", "duplexMode", "printerType"];
+function rememberSettings(printer) {
+  const kept = {};
+  for (const key of KEPT_SETTINGS) if (printer[key] !== undefined && printer[key] !== false && printer[key] !== "auto") kept[key] = printer[key];
+  if (!Object.keys(kept).length) return;
+  db.printerSettings = db.printerSettings || {};
+  db.printerSettings[printer.id] = kept;
+  const ids = Object.keys(db.printerSettings);
+  for (const old of ids.slice(0, Math.max(0, ids.length - 200))) delete db.printerSettings[old]; // the oldest go
+}
+
 // Save (or update) what an agent told us about its printers.
 function rememberPrinters(agent, printers) {
   const seen = new Set();
@@ -66,7 +79,9 @@ function rememberPrinters(agent, printers) {
 
     let record = db.printers.find((p) => p.id === id);
     if (!record) {
-      record = {
+      // Back after dropping out of its computer's list for a while (switched
+      // off, unplugged): it keeps what was set on Printers & setup.
+      record = Object.assign({
         id,
         agentId: agent.id,
         name,
@@ -74,7 +89,8 @@ function rememberPrinters(agent, printers) {
         colorMode: "auto",
         capabilities: null,
         updatedAt: 0,
-      };
+      }, (db.printerSettings || {})[id]);
+      if (db.printerSettings) delete db.printerSettings[id];
       db.printers.push(record);
     }
     record.reportedCapabilities = incoming.capabilities || null;
@@ -86,7 +102,10 @@ function rememberPrinters(agent, printers) {
   // but only for this agent.
   for (let i = db.printers.length - 1; i >= 0; i--) {
     const p = db.printers[i];
-    if (p.agentId === agent.id && !seen.has(p.id)) db.printers.splice(i, 1);
+    if (p.agentId === agent.id && !seen.has(p.id)) {
+      rememberSettings(p);
+      db.printers.splice(i, 1);
+    }
   }
 
   save();

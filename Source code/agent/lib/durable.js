@@ -49,7 +49,12 @@ function flushFolder(dir) {
 function replace(file, text) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const tmp = file + "." + process.pid + ".tmp"; // two programs saving at once never share one
-  writeAndFlush(tmp, text);
+  try {
+    writeAndFlush(tmp, text);
+  } catch (err) {
+    try { fs.unlinkSync(tmp); } catch (e) { /* nothing was written */ }
+    throw err;
+  }
   // On Windows the swap can fail for a moment while antivirus, search
   // indexing or backup software has the file open: try again briefly, and
   // as a last resort write the file directly (still flushed).
@@ -59,7 +64,10 @@ function replace(file, text) {
       flushFolder(path.dirname(file));
       return;
     } catch (err) {
-      if (!["EPERM", "EBUSY", "EACCES"].includes(err.code)) throw err;
+      if (!["EPERM", "EBUSY", "EACCES"].includes(err.code)) {
+        try { fs.unlinkSync(tmp); } catch (e) { /* already gone */ }
+        throw err;
+      }
       pause(100);
     }
   }
@@ -110,6 +118,13 @@ function removeJson(file) {
   for (const f of [file, file + ".bak", file + ".tmp"]) {
     try { fs.rmSync(f, { force: true }); } catch (err) { /* already gone */ }
   }
+  // Left by a save that was cut short: "name.<pid>.tmp".
+  try {
+    const base = path.basename(file);
+    for (const name of fs.readdirSync(path.dirname(file))) {
+      if (name.startsWith(base + ".") && /\.\d+\.tmp$/.test(name)) fs.rmSync(path.join(path.dirname(file), name), { force: true });
+    }
+  } catch (err) { /* folder gone */ }
 }
 
 module.exports = { writeText, writeJson, readJson, removeJson, whichCopy };

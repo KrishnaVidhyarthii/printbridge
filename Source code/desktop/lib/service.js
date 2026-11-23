@@ -196,8 +196,12 @@ async function startForSignedInUsers(exePath, args) {
 // Manager or Settings)? Then it no longer starts at sign-in, and printing to
 // the "PrintBridge" printer quietly does nothing. Windows keeps that choice
 // next to the Run entry: an odd first byte means switched off.
+// The startup task runs as the system account, whose own "HKCU" is not what
+// anyone signed in sees: every loaded person's settings (HKEY_USERS) are read too.
 const STARTUP_OFF_SCRIPT =
-  "foreach ($k in 'HKLM:', 'HKCU:') { " +
+  "$roots = @('HKLM:') + @(Get-ChildItem Registry::HKEY_USERS -ErrorAction SilentlyContinue | " +
+  "Where-Object { $_.PSChildName -match '^S-1-5-21-[0-9-]+$' } | ForEach-Object { 'Registry::HKEY_USERS\\' + $_.PSChildName }); " +
+  "foreach ($k in $roots) { " +
   "$v = (Get-ItemProperty ($k + '\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run') -Name '" + P.TASK_NAME + "' -ErrorAction SilentlyContinue).'" + P.TASK_NAME + "'; " +
   "if ($v) { $v[0] } }";
 
@@ -211,6 +215,6 @@ async function startupSwitchedOff() {
 const STARTUP_OFF_TEXT =
   require("./brand").NAME + " was switched off in Windows Startup apps, so printing to the \"" + require("./brand").NAME +
   "\" printer stopped working after a restart.\n\nIt is running again for now. To keep it on: open Task Manager " +
-  "(Ctrl+Shift+Esc), choose Startup apps, select \"" + P.TASK_NAME + "\" and press Enable.";
+  "(Ctrl+Shift+Esc), choose Startup apps, select \"" + require("./brand").NAME + "\" and press Enable.";
 
 module.exports = { install, remove, startNow, exists, taskXml, startForSignedInUsers, startupSwitchedOff, STARTUP_OFF_SCRIPT, STARTUP_OFF_TEXT };

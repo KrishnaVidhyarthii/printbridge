@@ -88,7 +88,7 @@ function checkVersionEverywhere(v) {
   // Every release tells people what changed, in English, Sinhala and Tamil (whatsnew.js).
   const notes = fs.readFileSync(path.join(SRC, "server/public/whatsnew.js"), "utf8");
   const entry = (notes.split('"' + v + '": {')[1] || "").split(/\n  "\d/)[0];
-  if (!["en:", "si:", "ta:"].every((k) => entry.includes(k))) stop("server/public/whatsnew.js has no \"What's new\" notes for " + v + " in English, Sinhala and Tamil.\nAdd them, build again, then publish.");
+  if (!["en", "si", "ta"].every((k) => new RegExp("\\n\\s+" + k + ": \\{[^}]*items: \\[\\s*\"").test(entry))) stop("server/public/whatsnew.js has no \"What's new\" notes for " + v + " in English, Sinhala and Tamil.\nAdd them, build again, then publish.");
 }
 
 function publicKeysInBuild() {
@@ -214,8 +214,8 @@ function get(url, redirects) {
       }
       let body = "";
       res.on("data", (c) => { body += c; });
-      res.on("end", () => resolve(res.statusCode === 200 ? body : null));
-    }).on("error", () => resolve(null)).on("timeout", function () { this.destroy(); });
+      res.on("end", () => resolve({ status: res.statusCode, body }));
+    }).on("error", () => resolve({ status: 0, body: "" })).on("timeout", function () { this.destroy(); });
   });
 }
 
@@ -230,7 +230,14 @@ async function sign() {
   }
 
   // Never publish the same or an older version again (computers ignore it).
-  const live = await get(CONFIG.MANIFEST_URL);
+  const answer = await get(CONFIG.MANIFEST_URL);
+  // Only "not found" means nothing is published yet. A network problem must not
+  // skip this check (--skip-live-check says it is on purpose, e.g. offline).
+  if (answer.status !== 200 && answer.status !== 404 && !opt("skip-live-check", false)) {
+    stop("couldn't reach " + CONFIG.MANIFEST_URL + " to see which version is published (answer " + (answer.status || "no connection") + ").\n" +
+      "Try again, or add --skip-live-check if you are sure this version is newer.");
+  }
+  const live = answer.status === 200 ? answer.body : null;
   if (live) {
     try {
       const lv = JSON.parse(live).version;

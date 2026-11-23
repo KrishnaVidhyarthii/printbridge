@@ -54,6 +54,10 @@ fi
 mkdir -p "$DATA_DIR/logs"
 chown -R root:wheel "$APP_DIR"
 chmod 755 "$DATA_DIR" "$DATA_DIR/logs"
+# The website's own folder holds the remote printing key and the documents
+# waiting to be printed: root (which runs it) only, not other people signed in here.
+mkdir -p "$DATA_DIR/website"
+chmod 700 "$DATA_DIR/website"
 
 # launchd silently refuses to load a LaunchDaemon plist unless it (and
 # every folder above it) is owned by root and not writable by anyone else -

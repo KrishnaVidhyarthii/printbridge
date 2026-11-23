@@ -30,8 +30,8 @@
 //
 // Free plan limits that matter here (Workers KV): 1,000 writes and 1,000
 // deletes a day for the whole account (shared with any other Workers) - each
-// printout takes about 8 writes and 2 deletes, the office saying "online" 144 - and 25 MB per value (files are
-// limited to 20 MB).
+// printout takes about 8 writes and 2 deletes, and the office saying "online" takes up to
+// 144 writes a day. A value can be 25 MB (files are limited to 20 MB).
 
 const CLAIM_CODE = "__CLAIM_CODE__";
 const MAX_FILE = 20 * 1024 * 1024; // before encryption
@@ -295,7 +295,9 @@ async function senderApi(req, env, url) {
 
   if (path === "/api/send" && req.method === "POST") {
     if (await locked(env, req)) return fail("Too many wrong codes. Try again in 15 minutes.", 429);
+    // Without a size up front there is no telling how much would be read into memory first.
     const length = parseInt(req.headers.get("Content-Length") || "0", 10);
+    if (!length) return fail("The file didn't arrive properly. Reload the page and try again.", 411);
     if (length > MAX_UPLOAD + 16 * 1024) return fail("That file is too big (20 MB at most).", 413);
     let form;
     try { form = await req.formData(); } catch (e) { return fail("The file didn't arrive. Try again."); }
@@ -317,10 +319,10 @@ async function senderApi(req, env, url) {
     const file = form.get("file");
     if (!file || typeof file.arrayBuffer !== "function") return fail("No file arrived.");
     if (file.size > MAX_UPLOAD) return fail("That file is too big (20 MB at most).", 413);
+    let usedToday = 0;
     if (person.dailyLimit) {
-      const used = await sentToday(env, hash);
-      if (used >= person.dailyLimit) return fail("You've reached today's limit of " + person.dailyLimit + " printouts.", 429);
-      await env.PB.put("n:" + hash + ":" + today(), String(used + 1), { expirationTtl: 2 * 24 * 3600 });
+      usedToday = await sentToday(env, hash);
+      if (usedToday >= person.dailyLimit) return fail("You've reached today's limit of " + person.dailyLimit + " printouts.", 429);
     }
     const copies = Math.min(Math.max(parseInt(form.get("copies"), 10) || 1, 1), 20);
     const id = randomId();
@@ -334,6 +336,8 @@ async function senderApi(req, env, url) {
     await env.PB.put("job:" + id, JSON.stringify(job), { expirationTtl: 14 * 24 * 3600 });
     await env.PB.put("st:" + id, JSON.stringify({ status: "waiting", message: "", at: Date.now(), hash }), { expirationTtl: STATUS_TTL });
     await addToQueue(env, id);
+    // Counted only once it is stored, so a failed send doesn't use up someone's day.
+    if (person.dailyLimit) await env.PB.put("n:" + hash + ":" + today(), String(usedToday + 1), { expirationTtl: 2 * 24 * 3600 });
     return json({ ok: true, id, online: await officeOnline(env) });
   }
 

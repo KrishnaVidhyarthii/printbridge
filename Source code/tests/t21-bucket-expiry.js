@@ -26,6 +26,14 @@ ok(held.bucketFor("dev_aaaaaaaa").length === 2 && held.bucketFor("dev_bbbbbbbb")
 held.take(a.id);
 ok(held.bucketFor("dev_aaaaaaaa").map((e) => e.id).join() === b.id, "a printed file leaves the bucket");
 
+// --- the bucket's hour starts when a file goes in, not when it was uploaded
+const early = held.create({ storedPath: file("early.pdf"), originalName: "early.pdf", size: 8 });
+early.createdAt = Date.now() - 55 * MIN;
+held.addToBucket(early.id, "dev_cccccccc");
+ok(Date.now() - early.createdAt < 5000, "a file uploaded 55 minutes ago gets a fresh hour when it is added to the bucket");
+held.sweep();
+ok(held.get(early.id), "...and is not thrown away five minutes later");
+
 // --- held files: over an hour old are deleted, bucket or not
 b.createdAt = Date.now() - 61 * MIN;
 const fresh = held.create({ storedPath: file("c.pdf"), originalName: "c.pdf", size: 8 });
@@ -53,17 +61,22 @@ remote.expireOld(); // not started yet: nothing to do, no crash
 const stateFile = path.join(dir, "remote.json");
 const pendingFile = (name) => file(name);
 fs.writeFileSync(stateFile, JSON.stringify({ pending: [
-  { relayId: "r1", fileName: "x.pdf", filePath: pendingFile("x.pdf"), at: Date.now() - 61 * MIN },
-  { relayId: "r2", fileName: "y.pdf", filePath: pendingFile("y.pdf"), at: Date.now() - 5 * MIN },
+  { relayId: "r1", fileName: "x.pdf", filePath: pendingFile("x.pdf"), at: Date.now() - 61 * MIN, heldAt: Date.now() - 61 * MIN },
+  { relayId: "r2", fileName: "y.pdf", filePath: pendingFile("y.pdf"), at: Date.now() - 5 * MIN, heldAt: Date.now() - 5 * MIN },
+  // sent long ago from far away, only reached this computer just now: its hour starts now
+  { relayId: "r3", fileName: "z.pdf", filePath: pendingFile("z.pdf"), at: Date.now() - 300 * MIN, heldAt: Date.now() },
 ], log: [{ relayId: "r1", result: "held" }] }));
 remote.start({ file: stateFile, uploadDir: path.join(dir, "u"), db });
 remote.stop();
 remote.expireOld();
 const after = remote.pendingFiles();
-ok(after.length === 1 && after[0] === "y.pdf", "printout waiting 61 minutes for approval is dropped, newer one kept");
-setTimeout(() => {
+ok(after.length === 2 && after.includes("y.pdf") && after.includes("z.pdf"), "printout waiting 61 minutes for approval is dropped, newer ones kept (the hour counts from arriving here)");
+// The files are deleted in the background: wait until they are gone, not a guessed time.
+(async () => {
+  const xPath = path.join(dir, "u", "x.pdf");
+  for (let i = 0; i < 100 && (fs.existsSync(b.storedPath) || fs.existsSync(xPath)); i++) await new Promise((r) => setTimeout(r, 50));
   ok(!fs.existsSync(b.storedPath), "the expired bucket file is deleted from disk");
-  ok(!fs.existsSync(path.join(dir, "u", "x.pdf")), "its file is deleted");
+  ok(!fs.existsSync(xPath), "its file is deleted");
   console.log(n + " checks passed");
   process.exit(0);
-}, 300);
+})();

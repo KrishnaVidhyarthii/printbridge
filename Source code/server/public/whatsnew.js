@@ -4,6 +4,35 @@
 // Google Translate, so the pop-up is marked "notranslate".
 // Newest first. Keep it to 2-4 short lines a person reads in ten seconds.
 var WHATS_NEW = {
+  "4.2.20": {
+    en: {
+      title: "What's new in PrintBridge",
+      items: [
+        "Fixes for out-of-order printers and both-sides printing (a printer's own settings are restored properly afterward).",
+        "On Printers & setup, removing a computer and clearing a printer's queue now only work from the main computer.",
+        "Safer handling of printer names and smaller reliability fixes.",
+      ],
+      ok: "Got it",
+    },
+    si: {
+      title: "PrintBridge හි අලුත් දේ",
+      items: [
+        "අක්‍රිය මුද්‍රණ යන්ත්‍ර සහ දෙපැත්තේ මුද්‍රණ දෝෂ නිවැරදි කර ඇත (මුද්‍රණයෙන් පසු යන්ත්‍රයේ මුල් සැකසුම් නිසි ලෙස යළි සැකසේ).",
+        "Printers & setup හි පරිගණකයක් ඉවත් කිරීම සහ මුද්‍රණ පෝලිම හිස් කිරීම දැන් ප්‍රධාන පරිගණකයෙන් පමණක් කළ හැක.",
+        "මුද්‍රණ යන්ත්‍ර නාම වඩා ආරක්ෂිතව හැසිරවීම සහ කුඩා වැඩිදියුණු කිරීම් කිහිපයක්.",
+      ],
+      ok: "හරි",
+    },
+    ta: {
+      title: "PrintBridge-இல் புதியவை",
+      items: [
+        "பழுதடைந்த அச்சுப்பொறி மற்றும் இருபக்க அச்சிடல் பிழைகள் சரிசெய்யப்பட்டன (அச்சிட்ட பிறகு அதன் முந்தைய அமைப்புகள் சரியாக மீட்டெடுக்கப்படும்).",
+        "Printers & setup-இல் கணினியை அகற்றுவதும் அச்சு வரிசையை காலி செய்வதும் இப்போது முதன்மை கணினியில் இருந்து மட்டுமே செயல்படும்.",
+        "அச்சுப்பொறி பெயர்களை பாதுகாப்பாக கையாளுதல் மற்றும் சிறிய நம்பகத்தன்மை மேம்பாடுகள்.",
+      ],
+      ok: "சரி",
+    },
+  },
   "4.2.19": {
     en: {
       title: "What's new in PrintBridge",

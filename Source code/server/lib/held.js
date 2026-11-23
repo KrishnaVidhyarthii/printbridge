@@ -62,6 +62,8 @@ function discard(id) {
 function addToBucket(id, deviceId) {
   const entry = get(id);
   if (!entry || (entry.bucketOf && entry.bucketOf !== deviceId)) return false;
+  // The bucket's hour starts when the file goes in, not when it was uploaded.
+  if (!entry.bucketOf) entry.createdAt = Date.now();
   entry.bucketOf = deviceId;
   return true;
 }

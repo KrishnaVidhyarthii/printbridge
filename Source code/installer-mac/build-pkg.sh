@@ -136,7 +136,12 @@ mkdir -p "$DMG_DIR"
 cp "$OUT/PrintBridge.pkg" "$DMG_DIR/"
 hdiutil create -volname "PrintBridge" -srcfolder "$DMG_DIR" -ov -format UDZO "$OUT/PrintBridge-$VERSION.dmg" >/dev/null
 if [ -n "$PKG_SIGN_ID" ] && [ -n "$NOTARY_PROFILE" ]; then
-  codesign --force --timestamp --sign "${APP_SIGN_ID:-$PKG_SIGN_ID}" "$OUT/PrintBridge-$VERSION.dmg" 2>/dev/null || true
+  # A disk image is signed with a "Developer ID Application" identity, not the installer one.
+  if [ -n "$APP_SIGN_ID" ]; then
+    codesign --force --timestamp --sign "$APP_SIGN_ID" "$OUT/PrintBridge-$VERSION.dmg" || echo "WARNING: the disk image could not be signed."
+  else
+    echo "WARNING: the disk image is not signed (set APP_SIGN_ID to a Developer ID Application identity)."
+  fi
 fi
 
 echo

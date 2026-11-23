@@ -238,7 +238,7 @@ async function gather(startIfStopped) {
   if (P.IS_WINDOWS && (await require("./service").startupSwitchedOff().catch(() => false))) {
     add(false, `${B.NAME} is switched off in Windows Startup apps`,
       `Printing to the "${esc(B.NAME)}" printer stops working after a restart. To fix it: open Task Manager (Ctrl+Shift+Esc), ` +
-      `choose Startup apps, select "${esc(P.TASK_NAME)}" and press Enable.`);
+      `choose Startup apps, select "${esc(B.NAME)}" and press Enable.`);
   }
 
   updatesRow(add);
@@ -442,7 +442,7 @@ ${logs}
 
 async function runCheck(options) {
   const report = await gather(!(options && options.noStart));
-  const file = path.join(os.tmpdir(), "office-printing-check.html");
+  const file = path.join(os.tmpdir(), "printbridge-check.html");
   fs.writeFileSync(file, page(report));
   if (!(options && options.noOpen)) openInBrowser(file);
   return { file, report };

@@ -188,7 +188,7 @@ function typeCell(printer) {
 // Colour or black and white, and both sides or not. "Automatic" goes by
 // what the printer's computer says; the others overrule it when that is wrong.
 const COLOR_CHOICES = [["auto", "Automatic"], ["color", "Colour"], ["mono", "Black & white"]];
-const DUPLEX_CHOICES = [["auto", "Automatic"], ["yes", "Yes, by itself"], ["hand", "By hand (turn the paper over)"], ["no", "No"]];
+const DUPLEX_CHOICES = [["auto", "Automatic"], ["yes", "Yes, by itself"], ["hand", "By hand"], ["no", "No"]];
 
 function colorCell(printer) {
   const found = printer.reportedColor === true ? "colour"
@@ -212,6 +212,7 @@ function choiceCell(printer, choices, current, endpoint, groupLabel, found) {
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = label;
+    if (mode === "hand") button.title = "It can't turn the paper over itself: people turn the printed pages over, then the backs print";
     if (current === mode) button.className = "on";
     button.setAttribute("aria-pressed", String(current === mode));
     button.onclick = async () => {

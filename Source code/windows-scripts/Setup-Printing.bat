@@ -1,5 +1,7 @@
 @echo off
 setlocal
+REM  LEGACY: from before PrintBridgeSetup.exe existed. The installer does all of this
+REM  (including the power button, which is set to shut down, never to do nothing). Kept for reference.
 title Office Printing Setup
 REM ------------------------------------------------------------------
 REM  Office Printing - one-time setup for this computer.
@@ -52,8 +54,8 @@ powercfg /change monitor-timeout-dc 10 >nul 2>&1
 powercfg /hibernate off >nul 2>&1
 powercfg /setacvalueindex SCHEME_CURRENT SUB_BUTTONS LIDACTION 0 >nul 2>&1
 powercfg /setdcvalueindex SCHEME_CURRENT SUB_BUTTONS LIDACTION 0 >nul 2>&1
-powercfg /setacvalueindex SCHEME_CURRENT SUB_BUTTONS PBUTTONACTION 0 >nul 2>&1
-powercfg /setdcvalueindex SCHEME_CURRENT SUB_BUTTONS PBUTTONACTION 0 >nul 2>&1
+powercfg /setacvalueindex SCHEME_CURRENT SUB_BUTTONS PBUTTONACTION 3 >nul 2>&1
+powercfg /setdcvalueindex SCHEME_CURRENT SUB_BUTTONS PBUTTONACTION 3 >nul 2>&1
 powercfg /setacvalueindex SCHEME_CURRENT SUB_BATTERY BATACTIONCRIT 3 >nul 2>&1
 powercfg /setdcvalueindex SCHEME_CURRENT SUB_BATTERY BATACTIONCRIT 3 >nul 2>&1
 powercfg /setactive SCHEME_CURRENT >nul 2>&1

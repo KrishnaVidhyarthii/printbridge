@@ -267,6 +267,7 @@ async function collect(job) {
     copies: job.copies, color: job.color, sides: job.sides, fileName, filePath: tmp, at: job.at || Date.now(),
   };
   if (person.hold) {
+    entry.heldAt = Date.now(); // the hour is counted from when it started waiting here, not from the upload
     state.pending.push(entry);
     addLog(Object.assign(base, { fileName, result: "held" }));
     save();
@@ -497,7 +498,8 @@ function reject(relayId) {
 const MAX_WAIT_MS = 60 * 60 * 1000;
 function expireOld(now = Date.now()) {
   if (!state) return; // printing from anywhere not started
-  const old = state.pending.filter((e) => (e.at || 0) < now - MAX_WAIT_MS);
+  for (const e of state.pending) if (!e.heldAt) e.heldAt = now; // from before heldAt existed: counted from now
+  const old = state.pending.filter((e) => e.heldAt < now - MAX_WAIT_MS);
   if (!old.length) return;
   state.pending = state.pending.filter((e) => !old.includes(e));
   for (const entry of old) {

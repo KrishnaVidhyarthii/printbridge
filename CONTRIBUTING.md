@@ -30,6 +30,13 @@ cd "Source code/server"
 NO_DISCOVERY=1 npm start
 ```
 
+In Windows PowerShell:
+
+```powershell
+cd "Source code/server"
+$env:NO_DISCOVERY = 1; npm start
+```
+
 Then open <http://localhost:3000>. `NO_DISCOVERY=1` stops it from looking for other PrintBridge computers on your network, which matters if your network already has one. Its data goes in `server/data/`, which git ignores.
 
 There's nothing to compile: reload the page after changing anything in `server/public/`, and restart after changing `server.js` or `server/lib/`.

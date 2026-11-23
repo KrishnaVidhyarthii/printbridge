@@ -179,6 +179,12 @@ async function main() {
         await tell("Automatic updates aren't set up in this version of " + B.NAME + ".");
       } else if (answer.startsWith("off:switched-off")) {
         await tell("Automatic updates are switched off on this computer (update-settings.json in " + P.DATA_DIR + ").");
+      } else if (answer.startsWith("off:problem")) {
+        await tell("Automatic updates couldn't start on this computer. Restart " + B.NAME + ", then try again.");
+        process.exitCode = 1;
+      } else if (answer.startsWith("off:not-installed")) {
+        await tell("This copy of " + B.NAME + " isn't the installed one, so it can't update itself. Run " + B.NAME + " Setup to install it.");
+        process.exitCode = 1;
       } else if (answer.startsWith("off:")) {
         await tell(P.IS_WINDOWS
           ? "Updates are installed by " + B.NAME + "'s startup task, which isn't running on this computer. Run " + B.NAME + " Setup again to fix this."

@@ -26,6 +26,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: The tag matches the version in the code
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          code="$(node -p "require('./Source code/desktop/lib/version.js').VERSION")"
+          if [ "v$code" != "$GITHUB_REF_NAME" ]; then
+            echo "The tag $GITHUB_REF_NAME doesn't match the version in the code ($code). Raise the version first: node publish-update.js bump <version>"
+            exit 1
+          fi
       - name: Install packages
         run: |
           cd "Source code/server" && npm ci --omit=dev

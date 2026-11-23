@@ -43,7 +43,7 @@ STEP 2 - TRY IT ON YOUR MAC
 2. Follow the screens and type your Mac password when asked.
 3. A page opens in your browser. Choose "Is the main computer"
    (or "Shares a printer") and finish. A progress bar shows the setup; if
-   you chose LibreOffice it is a download of about 300 MB, so give it a few
+   you chose LibreOffice it is a download of about 350 MB, so give it a few
    minutes and keep the page open until it says "All set".
 4. Open the "PrintBridge" folder inside Applications. "Check PrintBridge"
    says in plain words whether everything is working.
@@ -93,7 +93,7 @@ IMPORTANT
 ---------
 The Mac installer has been checked as far as is possible without a Mac (the
 program was built and a print job was round-tripped through a test print
-server). It has not yet been installed on a real Mac, so please install it
-on ONE Mac first and print a test page before using it more widely.
+server), and Mac installers have been in use since 4.2.13. Even so, for a new
+version install it on ONE Mac first and print a test page before using it more widely.
 
 PrintBridge - ☕ by @devnithdev

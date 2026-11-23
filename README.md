@@ -35,6 +35,10 @@ One main computer runs the printing page, computers with printers share them, an
 * **Cross-platform**: Seamlessly connects Windows 10/11 and macOS (Apple Silicon & Intel) machines across the local network.
 * **Print from desktop apps**: Includes a native **PrintBridge** virtual printer so you can print directly from Microsoft Office, Acrobat, or any software.
 * **Smart print preview & queue**: Page-by-page visual preview, printer cards that show the maker, kind (inkjet, laser, dot matrix, receipt) and colour or black & white, and live queue tracking. A print goes only to the printer you chose.
+* **A bucket for later**: Add files to your own bucket and print them all together when you are ready. The queue goes by the moment you press Print, not by when a file was added. Anything held more than an hour is thrown away.
+* **Time to change your mind**: After Print there are 7 seconds to Cancel, Edit or press Print now.
+* **Both sides, with or without a duplex unit**: Each printer card says whether it prints both sides by itself, by hand or one side only. For a printer that can't turn the paper over, PrintBridge prints the fronts, shows how to turn the stack, then prints the backs.
+* **Out of order**: Mark a broken printer on Printers & setup. It stays on the print page, greyed out, and nothing is sent to it until it is marked working again.
 * **Optional back-up printer**: Tick it and, if your printer is off or fails, the job moves to a printer of the same kind. Inkjet and laser stand in for each other only with a second tick; dot matrix and receipt printers only use their own kind. Off by default.
 * **Your language**: A language picker on the printing page, with Sinhala and Tamil first and every other Google Translate language after them.
 * **A 3-minute video guide** in [English](https://youtu.be/Cx2plyjPf7w), [Sinhala](https://youtu.be/sP1R5dWC5Hw) and [Tamil](https://youtu.be/5sw9WdwODrY): installing on Windows and Mac, printing from a phone, from the page and from Excel. A short video shows just printing from a phone, in [English](https://youtu.be/R-5XXXhX6Mg), [Sinhala](https://youtu.be/oU3_QhFajBc) and [Tamil](https://youtu.be/4WxqC4cTjJE).
@@ -82,7 +86,6 @@ cd "../agent" && npm install
 cd "../tests"
 node t1-durable.js
 node t3-store.js
-node t5-supervisor.js
 node t10-updates.js
 node t11-fixip.js
 node t12-remote.js
@@ -98,7 +101,7 @@ node t21-bucket-expiry.js
 node t22-both-sides.js
 ```
 
-`tests/README.md` lists every test, including t2, t4, t6, t8 and t9, which are slower and run before bigger changes. t4, t5 and t6 need a real network card, so CI leaves them out. There is no t7.
+`tests/README.md` lists every test, including t2, t4, t5, t6, t8 and t9, which look for other computers on the network or take longer, and run before bigger changes. CI leaves them out, and t4, t5 and t6 need a real network card. There is no t7.
 
 ---
 

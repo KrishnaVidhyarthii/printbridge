@@ -212,7 +212,8 @@ async function refreshAddress() {
     printers = hello.printers || [];
     renderPrinterProblems();
     maxUploadMb = hello.maxUploadMb || 50;
-    if (hello.version) setTimeout(() => showWhatsNew(hello.version), 600);
+    // Not over a screen someone is using (a printout from Excel opens the Print screen): next visit then.
+    if (hello.version) setTimeout(() => { if (!document.querySelector(".modal-overlay:not([hidden]):not(#welcomeModal)")) showWhatsNew(hello.version); }, 600);
     for (const alert of hello.openHelp || []) showAlertBanner(alert, true);
   } catch (err) {
     setPageMessage(
@@ -325,7 +326,7 @@ if (window.pdfjsLib) {
 }
 
 function openPrintModalWith(files) {
-  if (countdown || sending) return;
+  if (countdown || sending) { setPageMessage("Wait for the current print to be sent first, then choose the file again.", "warn"); return; }
   const tooBig = files.filter((f) => f.size > maxUploadMb * 1024 * 1024);
   const fitting = files.filter((f) => f.size <= maxUploadMb * 1024 * 1024);
 
@@ -359,7 +360,7 @@ async function openPrintModalWithUpload(id) {
 
 // Files already on the website: a printout from another program, or the bucket.
 function openHeldFiles(list, inBucket) {
-  if (countdown || sending) return;
+  if (countdown || sending) { setPageMessage("Wait for the current print to be sent first.", "warn"); return; }
   discardPending();
   pendingFiles = list.map((info) => {
     const entry = newEntry({ name: info.fileName, size: info.size, file: null });
@@ -450,7 +451,7 @@ function uploadEntry(entry) {
     entry.xhr = null;
     if (entry.cancelled) return;
     if (entry.tries < UPLOAD_TRIES) {
-      // An earlier try that did arrive is never printed, and is deleted after 3 hours (held.js).
+      // An earlier try that did arrive is never printed, and is deleted after an hour (held.js).
       entry.status = "uploading";
       entry.progress = 0;
       renderPrintModal();
@@ -533,7 +534,14 @@ async function loadPreview(entry) {
     entry.pageCount = pdf.numPages;
     entry.pageSizes[1] = await pageSize(pdf, 1);
   } catch (err) {
-    entry.previewError = "The preview couldn't be shown, but the file can still be printed.";
+    if (err && (err.name === "MissingPDFException" || err.status === 404)) {
+      // Gone from the website (it restarted, or an hour passed): it can't be printed.
+      entry.status = "error";
+      entry.error = "That file has expired. Choose it again.";
+      if (entry.inBucket) loadBucket();
+    } else {
+      entry.previewError = "The preview couldn't be shown, but the file can still be printed.";
+    }
   }
   renderPrintModal();
   if (entry.pdf) loadOtherPageSizes(entry);
@@ -578,16 +586,17 @@ function renderFileList() {
     const row = document.createElement("div");
     row.className = "file-chip" + (index === activeIndex && pendingFiles.length > 1 ? " active" : "") +
       (entry.status === "error" ? " failed" : "");
-    if (pendingFiles.length > 1) {
-      row.tabIndex = 0;
-      row.setAttribute("role", "button");
-      row.onclick = () => { activeIndex = index; renderPrintModal(); };
-      row.onkeydown = (event) => { if (event.key === "Enter") row.onclick(); };
-    }
+    const select = () => { activeIndex = index; renderPrintModal(); };
+    if (pendingFiles.length > 1) row.onclick = select; // a click anywhere on the row; the name is the keyboard way in
 
-    const name = document.createElement("span");
-    name.className = "fname";
+    const name = document.createElement(pendingFiles.length > 1 ? "button" : "span");
+    name.className = "fname" + (pendingFiles.length > 1 ? " fname-btn" : "");
     name.textContent = entry.name;
+    if (pendingFiles.length > 1) {
+      name.type = "button";
+      name.title = "Show this file";
+      name.setAttribute("aria-pressed", index === activeIndex ? "true" : "false");
+    }
     row.appendChild(name);
 
     const size = document.createElement("span");
@@ -921,7 +930,8 @@ function updatePrintButton() {
   const ready = pendingFiles.filter((e) => e.status === "ready");
   const waiting = pendingFiles.some((e) => e.status === "uploading" || e.status === "preparing");
   button.disabled = !selectedPrinter() || waiting || !ready.length;
-  button.textContent = !selectedPrinter() && printers.length > 1 ? "Choose a printer first" : waiting ? "Getting it ready..." : ready.length > 1 ? "Print " + ready.length + " files" : "Print";
+  const noneWorking = printers.length > 0 && printers.every((p) => p.broken);
+  button.textContent = noneWorking ? "No printer is working right now" : !selectedPrinter() && printers.length > 1 ? "Choose a printer first" : waiting ? "Getting it ready..." : ready.length > 1 ? "Print " + ready.length + " files" : "Print";
   // Not when every file is already in the bucket (printing the bucket).
   $("bucketButton").hidden = !pendingFiles.some((e) => !e.inBucket);
   $("bucketButton").disabled = waiting || !ready.some((e) => !e.inBucket);
@@ -1026,7 +1036,8 @@ function renderPrinterPick() {
   }
 
   const label = document.createElement("label");
-  label.textContent = list.length === 1 ? "Printing on" : chosenPrinterId ? "Which printer?" : "Which printer? Tap one";
+  label.textContent = !usable.length ? "No printer is working right now"
+    : list.length === 1 ? "Printing on" : chosenPrinterId ? "Which printer?" : "Which printer? Tap one";
   box.appendChild(label);
 
   const pick = document.createElement("div");
@@ -1083,8 +1094,8 @@ function renderFailoverLine() {
   const printer = selectedPrinter();
   const kind = printer && KINDS[printer.kind] && printer.kind !== "unknown" ? printer.kind : null;
   const swap = kind && OFFICE_SWAP[kind];
-  const same = kind && printers.some((p) => p.id !== printer.id && p.kind === kind);
-  const other = swap && printers.some((p) => p.kind === swap);
+  const same = kind && printers.some((p) => p.id !== printer.id && p.kind === kind && !p.broken);
+  const other = swap && printers.some((p) => p.kind === swap && !p.broken);
   $("sameKindLine").hidden = !same;
   $("otherKindLine").hidden = !other;
   $("failoverLine").hidden = !same && !other;
@@ -1173,14 +1184,14 @@ function renderOptions() {
 
   if (caps.duplex === true) {
     box.appendChild(field("Sides", selectEl("optSides", [
-      ["one-sided", "Single-sided"],
-      ["two-sided-long-edge", "Double-sided (flip on long edge)"],
-      ["two-sided-short-edge", "Double-sided (flip on short edge)"],
+      ["one-sided", "One side"],
+      ["two-sided-long-edge", "Both sides (flip on long edge)"],
+      ["two-sided-short-edge", "Both sides (flip on short edge)"],
     ], "one-sided")));
   } else if (caps.duplexByHand === true) {
     box.appendChild(field("Sides", selectEl("optSides", [
-      ["one-sided", "Single-sided"],
-      [HAND_FLIP, "Double-sided (you turn the paper over)"],
+      ["one-sided", "One side"],
+      [HAND_FLIP, "Both sides (you turn the paper over)"],
     ], "one-sided")));
   }
 
@@ -1301,7 +1312,7 @@ function startCountdown(plan) {
   $("printModal").hidden = true;
   countdown = plan;
   plan.left = COUNTDOWN_SECONDS;
-  $("countdownSecs").textContent = plan.left;
+  showCountdownSeconds(plan.left);
   $("countdownWhat").textContent =
     (plan.ready.length > 1 ? plan.ready.length + " files" : plan.ready[0].name) + " on " + plan.printer.name + ".";
   const bar = document.querySelector(".countdown-bar");
@@ -1313,8 +1324,21 @@ function startCountdown(plan) {
   plan.timer = setInterval(() => {
     plan.left -= 1;
     if (plan.left <= 0) sendPrints(stopCountdown());
-    else $("countdownSecs").textContent = plan.left;
+    else showCountdownSeconds(plan.left);
   }, 1000);
+}
+
+function showCountdownSeconds(n) {
+  $("countdownSecs").textContent = n;
+  $("countdownUnit").textContent = n === 1 ? "second" : "seconds";
+}
+
+// Printers may have changed while this screen was away (marked out of order, switched off).
+async function refreshPrintersNow() {
+  try { await loadPrinters(true); } catch (err) { return; }
+  renderPrinterPick();
+  renderOptions();
+  updatePrintButton();
 }
 
 function stopCountdown() {
@@ -1330,13 +1354,16 @@ function editCountdown() {
   $("printModal").hidden = false;
   updatePrintButton();
   $("printButton").focus();
+  refreshPrintersNow();
 }
 
 function cancelCountdown() {
   if (!stopCountdown()) return;
-  const kept = pendingFiles.some((e) => e.inBucket);
+  const kept = pendingFiles.length > 0 && pendingFiles.every((e) => e.inBucket);
+  const fromProgram = pendingFiles.some((e) => e.fromPrinter && !e.inBucket);
   closePrintModal();
-  setPageMessage("Cancelled. Nothing was printed" + (kept ? "; your files are still in your bucket." : "."), "ok");
+  setPageMessage("Cancelled. Nothing was printed" + (kept ? "; your files are still in your bucket."
+    : fromProgram ? ". Print it from your program again if you still need it." : "."), "ok");
   pageMessageTimer = setTimeout(() => setPageMessage(null), 6000);
 }
 
@@ -1370,6 +1397,9 @@ async function sendPrints(plan) {
 
   for (const entry of ready) {
     try {
+      if (byHand && !entry.pageCount && !entry.chosen.size) {
+        throw new Error("both sides by hand needs the page preview, which couldn't be shown for this file. Choose One side, or tick the pages to print");
+      }
       const halves = byHand ? handFlipHalves(entry) : null;
       if (!halves || !halves.backs.length) {
         await send(entry, halves ? halves.fronts.join(",") : rangesText(entry.chosen), false);
@@ -1378,7 +1408,7 @@ async function sendPrints(plan) {
         box.textContent = "Printing the front sides of " + entry.name + "...";
         const first = await send(entry, halves.fronts.join(","), true);
         const how = await waitForJob(first.job.id);
-        if (how !== "done") throw new Error("the front sides didn't print (" + how + "), so the backs weren't sent");
+        if (how !== "done") throw new Error("the front sides " + (how === "too slow" ? "didn't finish in 15 minutes" : how === "cancelled" ? "were cancelled" : "didn't print") + ", so the backs weren't sent");
         if (!(await askToFlip(entry.name, halves.backs.length))) throw new Error("only the front sides were printed");
         box.textContent = "Printing the back sides of " + entry.name + "...";
         await send(entry, halves.backs.join(","), false);
@@ -1399,6 +1429,7 @@ async function sendPrints(plan) {
   if (failed.length && !sent) {
     box.className = "modal-message error";
     box.textContent = failed.join(" / ");
+    refreshPrintersNow(); // it may be a printer that has just been marked out of order
     return;
   }
 
@@ -1520,12 +1551,14 @@ async function addToBucket() {
   const box = $("printMessage");
   const adding = pendingFiles.filter((e) => e.status === "ready" && !e.inBucket);
   if (!adding.length) return;
+  let added = adding.length;
   try {
-    await api("/api/bucket", {
+    const answer = await api("/api/bucket", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ uploadIds: adding.map((e) => e.uploadId) }),
     });
+    if (answer && Number.isFinite(answer.added)) added = answer.added;
   } catch (err) {
     box.className = "modal-message error";
     box.textContent = err.message;
@@ -1534,7 +1567,8 @@ async function addToBucket() {
   for (const entry of adding) entry.inBucket = true; // so closing keeps them
   closePrintModal();
   setPageMessage(
-    (adding.length > 1 ? "Added " + adding.length + " files" : "Added " + adding[0].name) +
+    (added > 1 ? "Added " + added + " files" : adding.length === 1 ? "Added " + adding[0].name : "Added 1 file") +
+      (added < adding.length ? " (" + (adding.length - added) + " had expired)" : "") +
       " to your bucket. Print it when you're ready, within an hour.",
     "ok"
   );

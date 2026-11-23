@@ -125,12 +125,17 @@ async function cupsCapabilities(printerName) {
 
 const POWERSHELLS = ["powershell.exe", "pwsh.exe", "powershell", "pwsh"];
 
-async function runPowerShell(script) {
+// options: { env: extra environment variables, timeout: ms }. A printer's
+// name goes in as an environment variable ($env:PB_PRINTER), never into the
+// script text: names with curly quotes or other odd characters can't then
+// change what the script does.
+async function runPowerShell(script, options) {
   // Without this, PowerShell answers in an older text encoding and printer
   // names with accents or other alphabets ("Bürodrucker") come back garbled,
   // so jobs sent to them would fail.
   script = "[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false; " + script;
   for (const shell of POWERSHELLS) {
+    const extra = options || {};
     const result = await run(shell, [
       "-NoProfile",
       "-NonInteractive",
@@ -138,7 +143,7 @@ async function runPowerShell(script) {
       "Bypass",
       "-Command",
       script,
-    ]);
+    ], Object.assign({}, extra.timeout ? { timeout: extra.timeout } : {}, extra.env ? { env: Object.assign({}, process.env, extra.env) } : {}));
     if (result.ok || (result.error && result.error.code !== "ENOENT")) return result;
   }
   return { ok: false, stdout: "", stderr: "PowerShell was not found." };
@@ -181,7 +186,7 @@ async function listWindowsPrinters() {
     "Select-Object Name,PortName,Default,PrinterPaperNames,Capabilities | " +
     "ConvertTo-Json -Depth 4 -Compress";
 
-  const result = await runPowerShell(script);
+  const result = await runPowerShell(script, { timeout: 60000 });
   if (!result.ok) return null;
   if (!result.stdout.trim()) return [];
 
@@ -193,9 +198,11 @@ async function listWindowsPrinters() {
   }
   if (!Array.isArray(parsed)) parsed = [parsed];
 
-  const byHand = await printersWithoutDuplexUnit();
-  return parsed
-    .filter((item) => item && item.Name && !isPretendPrinter(item))
+  const real = parsed.filter((item) => item && item.Name && !isPretendPrinter(item));
+  // Only printers that offer both sides need asking whether they can turn paper over.
+  const byHand = await printersWithoutDuplexUnit(
+    real.filter((item) => Array.isArray(item.Capabilities) && item.Capabilities.includes(3)).map((item) => String(item.Name)));
+  return real
     .map((item) => {
       const capabilityNumbers = Array.isArray(item.Capabilities) ? item.Capabilities : [];
       const papers = Array.isArray(item.PrinterPaperNames)
@@ -223,12 +230,14 @@ async function listWindowsPrinters() {
 // don't say either way; those are left as the driver reports them. Anything
 // going wrong here just means nobody is marked.
 let lastWithoutUnit = new Set();
-async function printersWithoutDuplexUnit() {
+async function printersWithoutDuplexUnit(names) {
+  if (!names.length) return new Set();
   const r = await runPowerShell(
-    "Get-Printer | ForEach-Object { $n = $_.Name; " +
+    "@($env:PB_NAMES | ConvertFrom-Json) | ForEach-Object { $n = $_; " +
     "Get-PrinterProperty -PrinterName $n -ErrorAction SilentlyContinue | " +
     "Where-Object { $_.PropertyName -match 'DuplexUnit' -and [string]$_.Value -match '^(NotInstalled|None|False|Not ?Available)$' } | " +
-    "Select-Object -First 1 | ForEach-Object { $n } }");
+    "Select-Object -First 1 | ForEach-Object { $n } }",
+    { timeout: 60000, env: { PB_NAMES: JSON.stringify(names) } });
   // A slow or failed check keeps the last answer, so printers don't flip
   // between "automatic" and "by hand" on the print page.
   if (!r.ok) return lastWithoutUnit;

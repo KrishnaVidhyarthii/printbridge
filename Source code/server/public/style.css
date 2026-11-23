@@ -260,7 +260,7 @@ button.hide-btn:hover { background: var(--warn-line); }
 .show-state::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: currentColor; vertical-align: 1px; }
 .color-seg button { padding: 6px 8px; font-size: 13px; white-space: nowrap; }
 /* Printers & setup has wide tables: give it room on bigger screens. */
-.manage-page main { max-width: 1040px; }
+.manage-page main { max-width: 1120px; }
 /* Wide tables scroll sideways inside their card instead of running past it. */
 .table-scroll { overflow-x: auto; }
 #printerTable td:first-child { min-width: 9em; }
@@ -829,9 +829,34 @@ details.tools summary { cursor: pointer; color: var(--muted); font-size: 13px; w
 .chip.sides { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
 
 /* a printer marked out of order at the office */
-.printer-option.is-broken { opacity: .55; cursor: not-allowed; }
+/* Dim the picture and name, not the explanation: that stays readable. */
+.printer-option.is-broken, .printer-option.is-broken:disabled { opacity: 1; cursor: not-allowed; }
+.printer-option.is-broken .ptype, .printer-option.is-broken .pname, .printer-option.is-broken .chip:not(.broken) { opacity: .6; }
 .chip.broken { background: var(--bad); color: #fff; }
+:root[data-theme="dark"] .chip.broken { background: #b91c1c; }
 .show-state.is-broken { color: var(--bad); font-weight: 600; margin-left: 6px; }
 .show-cell { min-width: 150px; }
 .show-cell .show-state, .show-cell button { display: block; white-space: nowrap; margin: 0 0 6px; }
 .show-cell button { width: 100%; }
+
+/* a picker for the file to look at, in the list of several files */
+.file-chip .fname-btn {
+  background: transparent; border: none; padding: 0; text-align: left;
+  color: inherit; font: inherit; font-weight: 450; cursor: pointer;
+}
+.file-chip .fname-btn:hover { background: transparent; text-decoration: underline; }
+.file-chip:has(.fname-btn) { cursor: pointer; }
+
+/* Tap targets of at least 40px: the look stays, the area to touch grows. */
+.tick::after, .header-hit::after { content: ""; position: absolute; inset: -7px; }
+.name-chip, .refresh-btn { min-height: 40px; }
+.seg button, .color-seg button, .whatsnew-langs button { min-height: 40px; }
+header.one-line .theme-btn { position: relative; }
+header.one-line .theme-btn::after { content: ""; position: absolute; inset: -3px; }
+
+/* the Print screen's two footer buttons stack on a phone */
+@media (max-width: 480px) {
+  .foot-row { flex-wrap: wrap; }
+  .foot-row .big-print { flex: 1 1 100%; order: 1; }
+  .foot-row .bucket-add { flex: 1 1 100%; order: 2; padding: 12px; }
+}

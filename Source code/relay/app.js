@@ -201,6 +201,7 @@
     done: ["✅", "Printed", "Collect it from the printer."],
     failed: ["⚠️", "Didn't print", ""],
     rejected: ["🚫", "Didn't print", "The office decided not to print this one."],
+    gone: ["❔", "Status not available", "This printout's status is no longer available. If it hasn't come out, send it again."],
   };
   function paint(st, online, message) {
     var s = STATES[st] || STATES.waiting;
@@ -218,7 +219,7 @@
     (function tick() {
       post("/api/status", { id: id, code: session.code }).then(function (r) {
         if (gen !== trackGen) return; // "Send another file" started a new one
-        if (r._status === 404) return; // the record has expired: nothing more to learn
+        if (r._status === 404) { paint("gone", true); return; } // the record has expired: nothing more to learn
         if (r._status === 200) {
           paint(r.status, r.online, r.message);
           if (["done", "failed", "rejected"].indexOf(r.status) !== -1) return;

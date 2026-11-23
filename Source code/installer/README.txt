@@ -51,6 +51,14 @@ From a phone, tablet or any computer:
    only those, choose portrait or landscape, tap a printer (each shows
    its maker, kind and colour), press Print.
 
+After Print there are 7 seconds to Cancel, Edit or press "Print now".
+"Add to bucket" keeps files to print together later (an hour at most).
+Each printer shows whether it prints both sides by itself, by hand or one
+side only: by hand, PrintBridge prints the fronts, shows how to turn the
+paper over, then prints the backs. A broken printer can be marked "Out of
+order" on Printers & setup: it stays listed, greyed out, and nothing is
+sent to it.
+
 A print goes only to the printer you chose. Tick "If this printer is
 off or fails, print on another ... printer" to let it move to another
 printer of the same kind (a second tick, "Or ... instead", lets inkjet

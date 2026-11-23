@@ -29,14 +29,13 @@ function describe(states) {
 
 // --- Windows --------------------------------------------------------------
 
-const psName = (name) => "'" + String(name).replace(/'/g, "''") + "'";
-
 async function windowsHealth() {
   const script = `
 $now = Get-Date
 $out = foreach ($p in Get-Printer) {
   $jobs = @(Get-PrintJob -PrinterName $p.Name -ErrorAction SilentlyContinue)
-  $old = @($jobs | Where-Object { $_.SubmittedTime -lt $now.AddMinutes(-${STALE_MINUTES}) })
+  # Only jobs that are stuck, never one that is printing normally (a long job on a slow printer).
+  $old = @($jobs | Where-Object { $_.SubmittedTime -lt $now.AddMinutes(-${STALE_MINUTES}) -and -not ("$($_.JobStatus)" -match 'Printing' -and $_.PagesPrinted -gt 0) })
   foreach ($j in $old) { Remove-PrintJob -InputObject $j -ErrorAction SilentlyContinue }
   $left = @($jobs | Where-Object { $old -notcontains $_ })
   $first = $left | Sort-Object SubmittedTime | Select-Object -First 1
@@ -49,7 +48,7 @@ $out = foreach ($p in Get-Printer) {
   }
 }
 @($out) | ConvertTo-Json -Compress`;
-  const r = await runPowerShell(script);
+  const r = await runPowerShell(script, { timeout: 60000 });
   if (!r.ok) return null;
   let list;
   try { list = JSON.parse(r.stdout || "[]"); } catch (err) { return null; }
@@ -60,7 +59,7 @@ $out = foreach ($p in Get-Printer) {
 }
 
 async function windowsClear(printerName) {
-  const r = await runPowerShell("Get-PrintJob -PrinterName " + psName(printerName) + " -ErrorAction Stop | Remove-PrintJob; 'ok'");
+  const r = await runPowerShell("Get-PrintJob -PrinterName $env:PB_PRINTER -ErrorAction Stop | Remove-PrintJob; 'ok'", { env: { PB_PRINTER: String(printerName) } });
   return r.ok;
 }
 
@@ -95,7 +94,8 @@ async function macHealth() {
     seen.add(id);
     if (!firstSeen.has(id)) firstSeen.set(id, now);
     const minutes = Math.floor((now - firstSeen.get(id)) / 60000);
-    if (minutes >= STALE_MINUTES) {
+    // A job CUPS is processing is printing: leave it, however long it takes.
+    if (minutes >= STALE_MINUTES && !/processing/i.test(line)) {
       await run("cancel", [id], { timeout: 15000 });
       printer.removed++;
     } else {

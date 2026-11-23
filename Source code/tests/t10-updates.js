@@ -12,6 +12,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const waitFor = async (fn, ms) => { const end = Date.now() + ms; while (Date.now() < end) { if (await fn()) return true; await sleep(200); } return false; };
 const readJson = (f) => { try { return JSON.parse(fs.readFileSync(f, "utf8")); } catch (e) { return null; } };
 const procs = [];
+const tempDirs = []; // removed when the test ends, passed or failed
+const cleanUp = () => { for (const d of tempDirs) try { fs.rmSync(d, { recursive: true, force: true }); } catch (e) { /* in use */ } };
 
 const www = fs.mkdtempSync(path.join(os.tmpdir(), "pbu-www-"));
 const server = http.createServer((req, res) => {
@@ -198,7 +200,11 @@ const log = (c) => { try { return fs.readFileSync(path.join(c.dir, "logs", "upda
 
   // 8. Publishing: keygen, bump, sign with release/publish-update.js, then a
   //    computer installs exactly that.
-  const src = fs.mkdtempSync(path.join(os.tmpdir(), "pbu-src-"));
+  // Its own folder: the release script writes ../Updates next to the copy, which must never be shared with another run.
+  const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), "pbu-"));
+  tempDirs.push(tmpBase);
+  const src = path.join(tmpBase, "src");
+  fs.mkdirSync(src);
   const copy = (rel) => { fs.mkdirSync(path.dirname(path.join(src, rel)), { recursive: true }); fs.cpSync(path.join(ROOT, rel), path.join(src, rel), { recursive: true }); };
   ["desktop/lib", "desktop/package.json", "desktop/tools/relabel-exe/relabel-exe.js", "release", "server/server.js", "server/package.json", "server/public/whatsnew.js", "agent/agent.js", "agent/package.json", "installer/OfficePrinting.nsi", "BUILD-ON-MAC.txt", "installer-mac/BUILD-ON-MAC.txt"].forEach(copy);
   fs.writeFileSync(path.join(src, "desktop/lib/update-key.js"), "module.exports = {\n  PUBLIC_KEYS: [\n  ],\n};\n");
@@ -226,7 +232,7 @@ const log = (c) => { try { return fs.readFileSync(path.join(c.dir, "logs", "upda
   let noNotes = false;
   try { pub(["sign", "--key", keyFile]); } catch (e) { noNotes = /What's new/.test(String(e.stderr)); }
   ok(noNotes, "sign refuses a version with no What's new notes in English, Sinhala and Tamil");
-  fs.appendFileSync(path.join(src, "server/public/whatsnew.js"), '\nvar TEST_NOTES = {\n  "4.1.4": { en: {}, si: {}, ta: {} },\n};\n');
+  fs.appendFileSync(path.join(src, "server/public/whatsnew.js"), '\nvar TEST_NOTES = {\n  "4.1.4": {\n    en: { items: ["a"] },\n    si: { items: ["a"] },\n    ta: { items: ["a"] },\n  },\n};\n');
   fs.mkdirSync(path.join(src, "installer", "dist"), { recursive: true });
   fs.writeFileSync(path.join(src, "installer", "dist", "PrintBridgeSetup.exe"), JSON.stringify({ version: "4.1.4" }));
   let notSigned = false;
@@ -250,10 +256,12 @@ const log = (c) => { try { return fs.readFileSync(path.join(c.dir, "logs", "upda
 
   procs.forEach((p) => p.kill());
   server.close();
+  cleanUp();
   console.log(n + " checks passed");
   process.exit(0);
 })().catch((e) => {
   console.error(e);
   procs.forEach((p) => { console.error(p.out.slice(-1500)); p.kill(); });
+  cleanUp();
   process.exit(1);
 });

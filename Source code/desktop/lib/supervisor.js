@@ -263,7 +263,9 @@ function runParts(kinds, settings, statusFile, label, onMessage) {
       };
     }
     try {
-      fs.writeFileSync(statusFile, JSON.stringify(status, null, 2));
+      // Whole or not at all: the Check page never reads half a file.
+      fs.writeFileSync(statusFile + ".tmp", JSON.stringify(status, null, 2));
+      fs.renameSync(statusFile + ".tmp", statusFile);
     } catch (err) {
       /* informational only */
     }
@@ -423,11 +425,13 @@ function watchStartupSwitch() {
   let lastTry = 0;
   const check = async () => {
     if (Date.now() - lastTry < 10 * 60 * 1000) return; // a failed start isn't retried every minute
+    if (await isRunning(P.OUTBOX_LOCK_PORT)) return; // the cheap look first: nearly always running
     if (!(await service.startupSwitchedOff())) return;
-    if (await isRunning(P.OUTBOX_LOCK_PORT)) return;
-    lastTry = Date.now();
     const n = await service.startForSignedInUsers(process.execPath, "start-after-switch-off");
-    if (n) log.line("Switched off in Startup apps: started the printouts part for " + n + (n === 1 ? " person" : " people") + " signed in.");
+    // Nobody signed in yet: look again next minute, not in ten.
+    if (!n) return;
+    lastTry = Date.now();
+    log.line("Switched off in Startup apps: started the printouts part for " + n + (n === 1 ? " person" : " people") + " signed in.");
   };
   const timer = setInterval(() => { check().catch(() => {}); }, 60 * 1000);
   if (timer.unref) timer.unref();

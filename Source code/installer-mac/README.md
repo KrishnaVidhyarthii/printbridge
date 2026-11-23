@@ -6,8 +6,9 @@ Windows, doing the same job with the tools macOS actually offers.
 
 ## Building it
 
-Everything except the very last step can be done anywhere (Linux, this
-included - it's how this was built and checked):
+The installer is built on GitHub (a macOS runner, see .github/workflows/build.yml)
+or by BUILD-ALL.command on a Mac. Most of the steps can also be run anywhere (Linux,
+this included - it's how this was first built and checked):
 
 ```
 cd desktop
@@ -109,8 +110,8 @@ carries over.
 
 Windows' `oldsetup.js` hunts through Startup folders, Task Scheduler and
 the registry because Office Printing existed there for a while, by hand,
-before this installer did. There's no such history here - this is the
-first Mac release - so the only "previous install" that can ever exist is
+before this installer did. There's no such history here - a Mac only ever had
+this installer - so the only "previous install" that can ever exist is
 an earlier `PrintBridge.pkg`, and a LaunchDaemon with one fixed, known
 label (`com.printbridge.service`) is all that needs taking over. That's
 what `preinstall` does, unconditionally, before the new files go in.

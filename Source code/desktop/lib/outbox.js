@@ -324,7 +324,7 @@ function showProblem(name, kept, reason, refused) {
   // to a later document's - telling someone their spreadsheet failed when
   // the page in front of them was about a different file entirely.
   // A random part, and "wx" below, so a file or link planted under the name is never written through.
-  const file = path.join(os.tmpdir(), "office-printing-not-sent-" + Date.now() + "-" + require("crypto").randomBytes(6).toString("hex") + ".html");
+  const file = path.join(os.tmpdir(), "printbridge-not-sent-" + Date.now() + "-" + require("crypto").randomBytes(6).toString("hex") + ".html");
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Not printed</title>
 ${T.head()}
 <style>${T.CSS}
@@ -357,7 +357,8 @@ function tidy() {
     let names = [];
     try { names = fs.readdirSync(dir); } catch (err) { continue; }
     for (const n of names) {
-      if (dir === P.OUTBOX_DIR && !/^(taken|sent)-\d+\.pdf$/.test(n)) continue;
+      // Also the half-written "printout.pdf.part-..." a Mac leaves when the connection dies.
+      if (dir === P.OUTBOX_DIR && !/^((taken|sent)-\d+\.pdf|printout\.pdf\.part-.*)$/.test(n)) continue;
       const full = path.join(dir, n);
       try { if (fs.statSync(full).isFile() && fs.statSync(full).mtimeMs < cutoff) fs.rmSync(full, { force: true }); } catch (err) { /* ignore */ }
     }
@@ -366,7 +367,7 @@ function tidy() {
   // yesterday's are cleared out here rather than being left to pile up.
   try {
     for (const n of fs.readdirSync(os.tmpdir())) {
-      if (!/^office-printing-not-sent-\d+(-[0-9a-f]+)?\.html$/.test(n)) continue;
+      if (!/^(office-printing|printbridge)-not-sent-\d+(-[0-9a-f]+)?\.html$/.test(n)) continue;
       const full = path.join(os.tmpdir(), n);
       try { if (fs.statSync(full).mtimeMs < dayAgo) fs.rmSync(full, { force: true }); } catch (err) { /* ignore */ }
     }
