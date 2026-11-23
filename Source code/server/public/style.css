@@ -827,3 +827,11 @@ details.tools summary { cursor: pointer; color: var(--muted); font-size: 13px; w
 
 /* both sides: on the printer cards */
 .chip.sides { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
+
+/* a printer marked out of order at the office */
+.printer-option.is-broken { opacity: .55; cursor: not-allowed; }
+.chip.broken { background: var(--bad); color: #fff; }
+.show-state.is-broken { color: var(--bad); font-weight: 600; margin-left: 6px; }
+.show-cell { min-width: 150px; }
+.show-cell .show-state, .show-cell button { display: block; white-space: nowrap; margin: 0 0 6px; }
+.show-cell button { width: 100%; }

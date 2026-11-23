@@ -252,6 +252,7 @@ function otherPrinterLike(printer, options, triedIds, orOtherOffice) {
         p.id !== printer.id &&
         !triedIds.includes(p.id) &&
         !p.hidden &&
+        !p.broken &&
         agents.isOnline(p.agentId) &&
         agents.kindOf(p) === k &&
         printerSupports(p, options)

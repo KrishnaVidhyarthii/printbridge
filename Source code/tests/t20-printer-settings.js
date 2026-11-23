@@ -49,6 +49,24 @@ const managed = async () => JSON.parse((await request("GET", "/api/manage/printe
     await request("POST", "/api/manage/printers/" + encodeURIComponent(p.id) + "/duplex", { mode: "no" });
     ok((await request("POST", "/api/manage/printers/" + encodeURIComponent(p.id) + "/duplex", { mode: "maybe" })).status === 400, "anything else is refused");
 
+    // Out of order: still listed for everyone, but nothing can be sent to it.
+    const brokenUrl = "/api/manage/printers/" + encodeURIComponent(p.id) + "/broken";
+    ok((await request("POST", brokenUrl, { broken: "yes" })).status === 400, "out of order: only true or false is taken");
+    ok((await request("POST", brokenUrl, { broken: true })).status === 200 && (await managed()).broken === true, "a shown printer can be marked out of order");
+    const onPage = JSON.parse((await request("GET", "/api/printers")).body).find((x) => x.name === "Office");
+    ok(onPage && onPage.broken === true, "...and the print page still lists it, marked out of order");
+    const pdfBody = Buffer.from("%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF");
+    const up = await new Promise((resolve) => {
+      const req = http.request({ host: "127.0.0.1", port: PORT, method: "POST", path: "/api/uploads/printout?name=t", headers: { "content-type": "application/pdf" } }, (r) => {
+        let d = ""; r.on("data", (c) => d += c); r.on("end", () => resolve(JSON.parse(d)));
+      });
+      req.end(pdfBody);
+    });
+    const refused = await request("POST", "/api/print", { uploadId: up.upload.id, printerId: p.id, options: {}, label: "t" });
+    ok(refused.status === 404, "printing to it is refused");
+    await request("POST", brokenUrl, { broken: false });
+    ok((await managed()).broken === false, "marked working again");
+
     // A printer's computer says it is jammed: everyone sees it, then it clears.
     const got = [];
     ws.on("message", (m) => got.push(JSON.parse(m)));

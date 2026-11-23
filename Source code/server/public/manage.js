@@ -67,6 +67,7 @@ async function loadPrinters() {
     tr.appendChild(duplexCell(printer));
 
     const showCell = document.createElement("td");
+    showCell.className = "show-cell";
     // Says what the printer is now, and what pressing it will do. Green
     // Show and amber Hide, so the two can't be mixed up at a glance.
     const state = document.createElement("span");
@@ -93,6 +94,36 @@ async function loadPrinters() {
       }
     };
     showCell.appendChild(toggle);
+    // A shown printer can be marked out of order: still listed on the print
+    // page, but nothing is sent to it.
+    if (!printer.hidden) {
+      if (printer.broken) {
+        const mark = document.createElement("span");
+        mark.className = "show-state is-broken";
+        mark.textContent = "Out of order";
+        showCell.appendChild(mark);
+      }
+      const broken = document.createElement("button");
+      broken.className = printer.broken ? "show-btn" : "danger";
+      broken.textContent = printer.broken ? "Mark working" : "Mark out of order";
+      broken.title = printer.broken ? "People can print on it again" : "It stays on the print page, marked out of order, and nothing is sent to it";
+      broken.setAttribute("aria-label", broken.textContent + ": " + printer.name);
+      broken.onclick = async () => {
+        broken.disabled = true;
+        try {
+          await api("/api/manage/printers/" + encodeURIComponent(printer.id) + "/broken", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ broken: !printer.broken }),
+          });
+          await loadPrinters();
+        } catch (err) {
+          broken.disabled = false;
+          setPageMessage(err.message, "error");
+        }
+      };
+      showCell.appendChild(broken);
+    }
     tr.appendChild(showCell);
 
     body.appendChild(tr);

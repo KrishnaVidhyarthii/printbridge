@@ -219,7 +219,7 @@ async function report(relayId, status, message, collected) {
 // the one that has been here longest.
 function findPrinter(name) {
   const added = (p) => (deps.db.agents.find((a) => a.id === p.agentId) || {}).createdAt || 0;
-  return deps.db.printers.filter((p) => p.name === name && !p.hidden).sort((a, b) => added(a) - added(b))[0] || null;
+  return deps.db.printers.filter((p) => p.name === name && !p.hidden && !p.broken).sort((a, b) => added(a) - added(b))[0] || null;
 }
 
 // Turns an unlocked file into a print job. Returns the job.

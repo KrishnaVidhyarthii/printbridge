@@ -568,6 +568,31 @@ app.post("/api/manage/printers/:id/hidden", (req, res) => {
   res.json({ ok: true });
 });
 
+// Out of order: the printer stays on the print page, marked as such, and
+// nothing is sent to it. Jobs still waiting for it end here, saying why;
+// ones already at the printer are left alone.
+app.post("/api/manage/printers/:id/broken", (req, res) => {
+  const printer = agents.findPrinter(req.params.id);
+  if (!printer) {
+    res.status(404).json({ error: "No such printer." });
+    return;
+  }
+  if (!req.body || typeof req.body.broken !== "boolean") {
+    res.status(400).json({ error: "Say broken: true or false." });
+    return;
+  }
+  printer.broken = req.body.broken;
+  if (printer.broken) {
+    for (const job of db.jobs.filter((j) => j.printerId === printer.id && j.status === "queued")) {
+      jobs.finish(job, "failed", "Not printed: " + printer.name + " is marked out of order at the office. Print it on another printer.");
+    }
+  }
+  save();
+  agents.events.emit("printers-changed");
+  jobs.broadcastQueue();
+  res.json({ ok: true });
+});
+
 // Colour or black and white only ("auto" = what the printer's computer says).
 app.post("/api/manage/printers/:id/color", (req, res) => {
   const printer = agents.findPrinter(req.params.id);

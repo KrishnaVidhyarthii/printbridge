@@ -4,6 +4,29 @@
 // Google Translate, so the pop-up is marked "notranslate".
 // Newest first. Keep it to 2-4 short lines a person reads in ten seconds.
 var WHATS_NEW = {
+  "4.2.19": {
+    en: {
+      title: "What's new in PrintBridge",
+      items: [
+        "A printer can now be marked “Out of order” on Printers & setup. It stays on the print page, greyed out, so everyone can see it isn't working, and nothing is sent to it until it's marked working again.",
+      ],
+      ok: "Got it",
+    },
+    si: {
+      title: "PrintBridge හි අලුත් දේ",
+      items: [
+        "Printers & setup හි මුද්‍රණ යන්ත්‍රයක් දැන් “අක්‍රියයි” ලෙස සලකුණු කළ හැක. එය මුද්‍රණ පිටුවේ අළු පැහැයෙන් පෙනේ, එබැවින් එය ක්‍රියා නොකරන බව සැමට පෙනේ. නැවත ක්‍රියාත්මක ලෙස සලකුණු කරන තුරු එයට කිසිවක් යවනු නොලැබේ.",
+      ],
+      ok: "හරි",
+    },
+    ta: {
+      title: "PrintBridge-இல் புதியவை",
+      items: [
+        "Printers & setup-இல் ஒரு அச்சுப்பொறியை இப்போது “பழுதடைந்தது” எனக் குறிக்கலாம். அது அச்சுப் பக்கத்தில் சாம்பல் நிறத்தில் தெரியும், எனவே அது வேலை செய்யவில்லை என்பது அனைவருக்கும் தெரியும். மீண்டும் வேலை செய்கிறது எனக் குறிக்கும் வரை அதற்கு எதுவும் அனுப்பப்படாது.",
+      ],
+      ok: "சரி",
+    },
+  },
   "4.2.18": {
     en: {
       title: "What's new in PrintBridge",

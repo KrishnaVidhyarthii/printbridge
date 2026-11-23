@@ -208,6 +208,7 @@ function listPrinters() {
         printerType: PRINTER_TYPES.has(p.printerType) ? p.printerType : "auto",
         kind: kindOf(p),
         capabilities: p.capabilities,
+        broken: !!p.broken,
         problem: problemOf(p),
       };
     })
@@ -229,6 +230,7 @@ function listPrintersForManaging() {
         agentId: p.agentId,
         online: isOnline(p.agentId),
         hidden: !!p.hidden,
+        broken: !!p.broken,
         printerType: PRINTER_TYPES.has(p.printerType) ? p.printerType : "auto",
         kind: kindOf(Object.assign({}, p, { printerType: "auto" })), // what "Automatic" means for it
         colorMode: COLOR_MODES.has(p.colorMode) ? p.colorMode : "auto",
@@ -251,7 +253,8 @@ function findPrinter(id) {
 }
 
 function canPrintTo(printer) {
-  return !!printer && !printer.hidden;
+  // Marked out of order at the office: still listed, never printed to.
+  return !!printer && !printer.hidden && !printer.broken;
 }
 
 // --- WebSocket handling -------------------------------------------------

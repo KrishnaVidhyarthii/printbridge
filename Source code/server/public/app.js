@@ -1020,8 +1020,9 @@ function renderPrinterPick() {
 
   // Keep the choice while that printer exists. Never swap in another one
   // by ourselves: with more than one, the person chooses.
-  if (!chosenPrinterId || !list.some((p) => p.id === chosenPrinterId)) {
-    chosenPrinterId = list.length === 1 ? list[0].id : null;
+  const usable = list.filter((p) => !p.broken);
+  if (!chosenPrinterId || !usable.some((p) => p.id === chosenPrinterId)) {
+    chosenPrinterId = usable.length === 1 ? usable[0].id : null;
   }
 
   const label = document.createElement("label");
@@ -1038,7 +1039,7 @@ function renderPrinterPick() {
     const option = document.createElement("button");
     option.type = "button";
     option.className = "printer-option kind-" + (KINDS[printer.kind] ? printer.kind : "unknown") +
-      (printer.id === chosenPrinterId ? " selected" : "") + (printer.online ? "" : " is-off") +
+      (printer.id === chosenPrinterId ? " selected" : "") + (printer.online ? "" : " is-off") + (printer.broken ? " is-broken" : "") +
       (color === true ? " is-colour" : color === false ? " is-mono" : "");
     option.setAttribute("aria-pressed", printer.id === chosenPrinterId ? "true" : "false");
     option.innerHTML =
@@ -1049,11 +1050,18 @@ function renderPrinterPick() {
       '<span class="chip kind">' + kind.name + "</span>" +
       (color === true ? '<span class="chip colour">Colour</span>' : color === false ? '<span class="chip mono">Black &amp; white</span>' : "") +
       sidesChip(printer.capabilities) +
+      (printer.broken ? '<span class="chip broken">Out of order</span>' : "") +
       "</span>" +
       '<span class="pmeta"><span class="dot ' + (printer.online ? "on" : "off") + '"></span>' +
       escapeHtml(printer.computerName) + (printer.online ? "" : " &mdash; off right now, it will wait") + "</span>" +
-      (printer.online && printer.problem ? '<span class="pproblem">' + escapeHtml(printer.problem) + "</span>" : "") + "</span>";
+      (printer.broken ? '<span class="pproblem">Marked out of order at the office. Choose another printer.</span>'
+        : printer.online && printer.problem ? '<span class="pproblem">' + escapeHtml(printer.problem) + "</span>" : "") + "</span>";
+    if (printer.broken) {
+      option.disabled = true;
+      option.setAttribute("aria-disabled", "true");
+    }
     option.onclick = () => {
+      if (printer.broken) return;
       chosenPrinterId = printer.id;
       renderPrinterPick();
       renderOptions();
@@ -1127,7 +1135,7 @@ function brandOf(name) {
 }
 
 function selectedPrinter() {
-  return printers.find((p) => p.id === chosenPrinterId) || null;
+  return printers.find((p) => p.id === chosenPrinterId && !p.broken) || null;
 }
 
 // Show only the settings this printer actually supports.
